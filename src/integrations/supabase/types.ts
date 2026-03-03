@@ -232,6 +232,38 @@ export type Database = {
         }
         Relationships: []
       }
+      weight_logs: {
+        Row: {
+          created_at: string | null
+          id: string
+          logged_at: string
+          profile_id: string
+          weight_kg: number
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          logged_at?: string
+          profile_id: string
+          weight_kg: number
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          logged_at?: string
+          profile_id?: string
+          weight_kg?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weight_logs_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
