@@ -2,22 +2,22 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { wellnessLabel } from "@/lib/calculations";
-import { Activity, TrendingUp, TrendingDown, Zap, Timer, Dumbbell } from "lucide-react";
+import { wellnessLabel, progressionDelta, isLowerBetter } from "@/lib/calculations";
+import { FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
+import { Activity, TrendingUp, TrendingDown, Minus, Zap, Timer, Dumbbell, Weight } from "lucide-react";
 
 export default function Dashboard() {
   const { profileId, role } = useAuth();
 
-  const { data: recentResults } = useQuery({
-    queryKey: ["recent-results", profileId],
+  const { data: allResults } = useQuery({
+    queryKey: ["all-results-dash", profileId],
     queryFn: async () => {
       if (!profileId) return [];
       const { data } = await supabase
         .from("results")
         .select("*, test_library(name, family, unit)")
         .eq("profile_id", profileId)
-        .order("session_date", { ascending: false })
-        .limit(10);
+        .order("session_date", { ascending: false });
       return data || [];
     },
     enabled: !!profileId,
@@ -27,32 +27,77 @@ export default function Dashboard() {
     queryKey: ["profile", profileId],
     queryFn: async () => {
       if (!profileId) return null;
-      const { data } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", profileId)
-        .single();
+      const { data } = await supabase.from("profiles").select("*").eq("id", profileId).single();
       return data;
     },
     enabled: !!profileId,
   });
 
-  const latestWellness = recentResults?.find(r => r.wellness_score !== null);
+  const latestWellness = allResults?.find(r => r.wellness_score !== null);
   const wl = latestWellness?.wellness_score ? wellnessLabel(Number(latestWellness.wellness_score)) : null;
 
-  // Find best values
-  const jumpResults = recentResults?.filter((r: any) => r.test_library?.family === 'jumps') || [];
-  const bestJump = jumpResults.length > 0 ? Math.max(...jumpResults.map(r => Number(r.value))) : null;
-  const strengthResults = recentResults?.filter((r: any) => ['strength', 'weightlifting'].includes(r.test_library?.family)) || [];
-  const best1RM = strengthResults.length > 0 ? Math.max(...strengthResults.map(r => Number(r.value))) : null;
-  const sprintResults = recentResults?.filter((r: any) => r.test_library?.family === 'sprints') || [];
-  const bestSprint = sprintResults.length > 0 ? Math.min(...sprintResults.map(r => Number(r.value))) : null;
+  // Build categorized summary: latest value vs PB with trend %
+  type TestSummary = {
+    testId: string;
+    name: string;
+    family: string;
+    unit: string;
+    latest: number;
+    latestDate: string;
+    pb: number;
+    isPB: boolean;
+    trend: number | null; // % change from previous to latest
+  };
 
-  const statCards = [
-    { label: "Best Jump", value: bestJump ? `${bestJump} cm` : "—", icon: Zap, color: "text-primary" },
-    { label: "Best 1RM", value: best1RM ? `${best1RM} kg` : "—", icon: Dumbbell, color: "text-primary" },
-    { label: "Best Sprint", value: bestSprint ? `${bestSprint}s` : "—", icon: Timer, color: "text-primary" },
-  ];
+  const summaryByTest = new Map<string, TestSummary>();
+
+  if (allResults) {
+    // allResults is sorted desc by session_date
+    const grouped = new Map<string, typeof allResults>();
+    allResults.forEach(r => {
+      if (!grouped.has(r.test_id)) grouped.set(r.test_id, []);
+      grouped.get(r.test_id)!.push(r);
+    });
+
+    grouped.forEach((results, testId) => {
+      const info = results[0].test_library as any;
+      if (!info) return;
+      const latest = results[0];
+      const lowerBetter = isLowerBetter(info.family);
+      const values = results.map(r => Number(r.value));
+      const pb = lowerBetter ? Math.min(...values) : Math.max(...values);
+      const trend = results.length >= 2
+        ? progressionDelta(Number(results[1].value), Number(results[0].value), lowerBetter)
+        : null;
+
+      summaryByTest.set(testId, {
+        testId,
+        name: info.name,
+        family: info.family,
+        unit: info.unit,
+        latest: Number(latest.value),
+        latestDate: latest.session_date,
+        pb,
+        isPB: Number(latest.value) === pb,
+        trend,
+      });
+    });
+  }
+
+  // Group summaries by family
+  const summariesByFamily: Partial<Record<TestFamily, TestSummary[]>> = {};
+  summaryByTest.forEach(s => {
+    const fam = s.family as TestFamily;
+    if (!summariesByFamily[fam]) summariesByFamily[fam] = [];
+    summariesByFamily[fam]!.push(s);
+  });
+
+  const TrendIcon = ({ trend }: { trend: number | null }) => {
+    if (trend === null) return <Minus className="h-4 w-4 text-muted-foreground" />;
+    if (trend > 0) return <TrendingUp className="h-4 w-4 text-success" />;
+    if (trend < 0) return <TrendingDown className="h-4 w-4 text-destructive" />;
+    return <Minus className="h-4 w-4 text-muted-foreground" />;
+  };
 
   return (
     <div className="space-y-8">
@@ -65,77 +110,83 @@ export default function Dashboard() {
         </p>
       </div>
 
-      {/* Wellness + Stats */}
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-4">
-        {/* Wellness Gauge */}
+      {/* Wellness Card */}
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="glass-card max-w-xs rounded-2xl p-6"
+      >
+        <p className="text-sm text-muted-foreground">Wellness Score</p>
+        <div className="mt-4 flex items-end gap-2">
+          <span className="text-4xl font-bold" style={{ color: wl?.color || "hsl(var(--muted-foreground))" }}>
+            {latestWellness?.wellness_score ? Number(latestWellness.wellness_score).toFixed(1) : "—"}
+          </span>
+          <span className="mb-1 text-sm" style={{ color: wl?.color }}>
+            {wl?.label || "No data"}
+          </span>
+        </div>
+        <p className="mt-2 text-xs text-muted-foreground">/6.0 scale</p>
+      </motion.div>
+
+      {/* Categorized Summary */}
+      {FAMILY_ORDER.filter(f => summariesByFamily[f]?.length).map((family, fi) => (
+        <motion.div
+          key={family}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 * fi }}
+          className="glass-card rounded-2xl p-6"
+        >
+          <h2 className="mb-4 text-lg font-semibold capitalize text-foreground">
+            {FAMILY_LABELS[family]}
+          </h2>
+          <div className="space-y-2">
+            {summariesByFamily[family]!.map(s => (
+              <div
+                key={s.testId}
+                className="flex items-center justify-between rounded-xl bg-secondary/50 px-4 py-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-medium text-foreground">{s.name}</p>
+                  <p className="text-xs text-muted-foreground">{s.latestDate}</p>
+                </div>
+                <div className="flex items-center gap-4 text-right">
+                  <div>
+                    <p className="text-lg font-bold text-primary">
+                      {s.latest} {s.unit}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      PB: {s.pb} {s.unit} {s.isPB && "🏆"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <TrendIcon trend={s.trend} />
+                    {s.trend !== null && (
+                      <span className={`text-sm font-bold ${s.trend > 0 ? "text-success" : s.trend < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                        {s.trend > 0 ? "+" : ""}{s.trend}%
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      ))}
+
+      {/* Empty state */}
+      {summaryByTest.size === 0 && (
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="glass-card rounded-2xl p-6"
         >
-          <p className="text-sm text-muted-foreground">Wellness Score</p>
-          <div className="mt-4 flex items-end gap-2">
-            <span className="text-4xl font-bold" style={{ color: wl?.color || "hsl(var(--muted-foreground))" }}>
-              {latestWellness?.wellness_score ? Number(latestWellness.wellness_score).toFixed(1) : "—"}
-            </span>
-            <span className="mb-1 text-sm" style={{ color: wl?.color }}>
-              {wl?.label || "No data"}
-            </span>
-          </div>
-          <p className="mt-2 text-xs text-muted-foreground">/6.0 scale</p>
-        </motion.div>
-
-        {statCards.map((card, i) => (
-          <motion.div
-            key={card.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 * (i + 1) }}
-            className="glass-card rounded-2xl p-6"
-          >
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">{card.label}</p>
-              <card.icon className={`h-5 w-5 ${card.color}`} />
-            </div>
-            <p className="mt-4 text-3xl font-bold text-foreground">{card.value}</p>
-          </motion.div>
-        ))}
-      </div>
-
-      {/* Recent Results */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.4 }}
-        className="glass-card rounded-2xl p-6"
-      >
-        <h2 className="mb-4 text-lg font-semibold text-foreground">Recent Test Results</h2>
-        {recentResults && recentResults.length > 0 ? (
-          <div className="space-y-3">
-            {recentResults.map((result: any) => (
-              <div
-                key={result.id}
-                className="flex items-center justify-between rounded-xl bg-secondary/50 px-4 py-3"
-              >
-                <div>
-                  <p className="font-medium text-foreground">{result.test_library?.name}</p>
-                  <p className="text-sm text-muted-foreground">{result.session_date}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-primary">
-                    {Number(result.value)} {result.test_library?.unit}
-                  </p>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
           <div className="flex flex-col items-center py-12 text-center">
             <Activity className="mb-3 h-12 w-12 text-muted-foreground/30" />
             <p className="text-muted-foreground">No results yet. Start by recording a test!</p>
           </div>
-        )}
-      </motion.div>
+        </motion.div>
+      )}
     </div>
   );
 }

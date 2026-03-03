@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getTestsForSport, type SportType } from "@/lib/sportTests";
+import { getTestsForSport, getRecommendedTestNames, FAMILY_LABELS, FAMILY_ORDER, type SportType, type TestFamily } from "@/lib/sportTests";
 import { brzycki1RM, isStrengthTest, relativeForce } from "@/lib/calculations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,9 +10,10 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Calendar, CheckCircle2, Dumbbell } from "lucide-react";
+import { Calendar, CheckCircle2, Dumbbell, ChevronDown, Library, Star } from "lucide-react";
 
 export default function TestEntry() {
   const { profileId } = useAuth();
@@ -21,11 +22,13 @@ export default function TestEntry() {
   const [value, setValue] = useState("");
   const [reps, setReps] = useState("");
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split("T")[0]);
+  const [wellnessOpen, setWellnessOpen] = useState(false);
   const [fatigue, setFatigue] = useState(4);
   const [sleep, setSleep] = useState(4);
   const [soreness, setSoreness] = useState(4);
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
+  const [showAllTests, setShowAllTests] = useState(false);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", profileId],
@@ -45,41 +48,48 @@ export default function TestEntry() {
   });
 
   const sport = (profile?.sport || "hybrid") as SportType;
-  const filteredTests = tests?.filter(t => {
-    const sportTests = getTestsForSport(sport);
-    return sportTests.some(st => st.name === t.name);
+  const recommendedNames = getRecommendedTestNames(sport);
+  const sportTests = getTestsForSport(sport);
+
+  // Split tests into recommended vs all
+  const recommendedTests = tests?.filter(t => recommendedNames.includes(t.name)) || [];
+  const allSportTests = tests?.filter(t => {
+    const st = sportTests.find(s => s.name === t.name);
+    return st && !recommendedNames.includes(t.name);
   }) || [];
 
   const selectedTest = tests?.find(t => t.id === selectedTestId);
   const showReps = selectedTest && isStrengthTest(selectedTest.family);
 
-  // Computed values
   const estimated1RM = showReps && value && reps && Number(reps) > 1
     ? brzycki1RM(Number(value), Number(reps))
     : null;
-  const relForce = estimated1RM && profile?.weight_kg
-    ? relativeForce(estimated1RM, Number(profile.weight_kg))
-    : value && profile?.weight_kg && showReps && (!reps || Number(reps) === 1)
-    ? relativeForce(Number(value), Number(profile.weight_kg))
+  const is1RMDirect = showReps && (!reps || Number(reps) === 1);
+  const relForce = (estimated1RM || (is1RMDirect && value)) && profile?.weight_kg
+    ? relativeForce(estimated1RM || Number(value), Number(profile.weight_kg))
     : null;
 
   const mutation = useMutation({
     mutationFn: async () => {
+      const wellnessData = wellnessOpen ? {
+        wellness_fatigue: fatigue,
+        wellness_sleep: sleep,
+        wellness_soreness: soreness,
+      } : {};
       const { error } = await supabase.from("results").insert({
         profile_id: profileId!,
         test_id: selectedTestId,
         session_date: sessionDate,
         value: Number(value),
         reps: reps ? Number(reps) : null,
-        wellness_fatigue: fatigue,
-        wellness_sleep: sleep,
-        wellness_soreness: soreness,
+        ...wellnessData,
         notes: notes || null,
       });
       if (error) throw error;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["recent-results"] });
+      queryClient.invalidateQueries({ queryKey: ["all-results"] });
       setSubmitted(true);
       toast({ title: "Result saved!", description: "Your test result has been recorded." });
     },
@@ -102,6 +112,7 @@ export default function TestEntry() {
     setFatigue(4);
     setSleep(4);
     setSoreness(4);
+    setWellnessOpen(false);
     setSubmitted(false);
   };
 
@@ -121,7 +132,12 @@ export default function TestEntry() {
           </p>
           {estimated1RM && (
             <p className="mt-1 text-muted-foreground">
-              Estimated 1RM: <span className="font-bold text-primary">{estimated1RM} kg</span>
+              Estimated 1RM (Brzycki): <span className="font-bold text-primary">{estimated1RM} kg</span>
+            </p>
+          )}
+          {is1RMDirect && value && (
+            <p className="mt-1 text-muted-foreground">
+              True 1RM: <span className="font-bold text-primary">{value} kg</span>
             </p>
           )}
           {relForce && (
@@ -137,15 +153,41 @@ export default function TestEntry() {
     );
   }
 
-  // Group tests by family
-  const testsByFamily: Record<string, typeof filteredTests> = {};
-  filteredTests.forEach(t => {
-    const fam = t.family;
-    if (!testsByFamily[fam]) testsByFamily[fam] = [];
-    testsByFamily[fam].push(t);
-  });
+  // Group tests by family for "Browse All"
+  const groupByFamily = (testList: typeof allSportTests) => {
+    const grouped: Partial<Record<TestFamily, typeof allSportTests>> = {};
+    testList.forEach(t => {
+      const fam = t.family as TestFamily;
+      if (!grouped[fam]) grouped[fam] = [];
+      grouped[fam]!.push(t);
+    });
+    return grouped;
+  };
+
+  const recommendedByFamily = groupByFamily(recommendedTests);
+  const allByFamily = groupByFamily(allSportTests);
 
   const wellnessLabels = ["Very Poor", "Poor", "Fair", "Good", "Very Good", "Excellent"];
+
+  const renderTestSelect = (testList: typeof tests, label: string, icon: React.ReactNode) => {
+    const grouped = groupByFamily(testList || []);
+    return (
+      <>
+        {FAMILY_ORDER.filter(f => grouped[f]?.length).map(family => (
+          <div key={family}>
+            <div className="px-2 py-1 text-xs font-bold uppercase text-muted-foreground">
+              {FAMILY_LABELS[family]}
+            </div>
+            {grouped[family]!.map(t => (
+              <SelectItem key={t.id} value={t.id} className="text-foreground">
+                {t.name} ({t.unit})
+              </SelectItem>
+            ))}
+          </div>
+        ))}
+      </>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -173,21 +215,81 @@ export default function TestEntry() {
               <SelectTrigger className="mt-1 border-border bg-secondary text-foreground">
                 <SelectValue placeholder="Choose a test..." />
               </SelectTrigger>
-              <SelectContent className="border-border bg-card">
-                {Object.entries(testsByFamily).map(([family, famTests]) => (
-                  <div key={family}>
-                    <div className="px-2 py-1 text-xs font-bold uppercase text-muted-foreground">
-                      {family.replace(/_/g, " ")}
+              <SelectContent className="max-h-80 border-border bg-card">
+                {/* Recommended Battery */}
+                {recommendedTests.length > 0 && (
+                  <>
+                    <div className="flex items-center gap-1 px-2 py-1.5 text-xs font-bold uppercase text-primary">
+                      <Star className="h-3 w-3" /> Recommended Battery
                     </div>
-                    {famTests.map(t => (
-                      <SelectItem key={t.id} value={t.id} className="text-foreground">
-                        {t.name} ({t.unit})
-                      </SelectItem>
+                    {FAMILY_ORDER.filter(f => recommendedByFamily[f]?.length).map(family => (
+                      <div key={`rec-${family}`}>
+                        <div className="px-3 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground/60">
+                          {FAMILY_LABELS[family]}
+                        </div>
+                        {recommendedByFamily[family]!.map(t => (
+                          <SelectItem key={t.id} value={t.id} className="text-foreground">
+                            {t.name} ({t.unit})
+                          </SelectItem>
+                        ))}
+                      </div>
                     ))}
-                  </div>
-                ))}
+                  </>
+                )}
+
+                {/* All other tests for the sport */}
+                {showAllTests && Object.keys(allByFamily).length > 0 && (
+                  <>
+                    <div className="flex items-center gap-1 px-2 py-1.5 text-xs font-bold uppercase text-muted-foreground">
+                      <Library className="h-3 w-3" /> Full Library
+                    </div>
+                    {FAMILY_ORDER.filter(f => allByFamily[f]?.length).map(family => (
+                      <div key={`all-${family}`}>
+                        <div className="px-3 py-0.5 text-[10px] font-semibold uppercase text-muted-foreground/60">
+                          {FAMILY_LABELS[family]}
+                        </div>
+                        {allByFamily[family]!.map(t => (
+                          <SelectItem key={t.id} value={t.id} className="text-foreground">
+                            {t.name} ({t.unit})
+                          </SelectItem>
+                        ))}
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {/* For hybrid, just show everything grouped */}
+                {sport === 'hybrid' && (() => {
+                  const allGrouped = groupByFamily(tests || []);
+                  return FAMILY_ORDER.filter(f => allGrouped[f]?.length).map(family => (
+                    <div key={family}>
+                      <div className="px-2 py-1 text-xs font-bold uppercase text-muted-foreground">
+                        {FAMILY_LABELS[family]}
+                      </div>
+                      {allGrouped[family]!.map(t => (
+                        <SelectItem key={t.id} value={t.id} className="text-foreground">
+                          {t.name} ({t.unit})
+                        </SelectItem>
+                      ))}
+                    </div>
+                  ));
+                })()}
               </SelectContent>
             </Select>
+
+            {/* Browse All button for non-hybrid */}
+            {sport !== 'hybrid' && !showAllTests && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowAllTests(true)}
+                className="mt-2 text-xs text-primary hover:text-primary/80"
+              >
+                <Library className="mr-1 h-3 w-3" /> Browse All Tests
+              </Button>
+            )}
+
             {selectedTest?.description && (
               <p className="mt-2 text-xs text-muted-foreground">{selectedTest.description}</p>
             )}
@@ -208,7 +310,7 @@ export default function TestEntry() {
             </div>
             {showReps && (
               <div>
-                <Label className="text-muted-foreground">Reps (for 1RM est.)</Label>
+                <Label className="text-muted-foreground">Reps (1 = True 1RM)</Label>
                 <Input
                   type="number"
                   min="1"
@@ -228,6 +330,15 @@ export default function TestEntry() {
               <p className="text-2xl font-bold text-primary">{estimated1RM} kg</p>
               {relForce && (
                 <p className="text-sm text-muted-foreground">Relative: <span className="text-primary">{relForce}x BW</span></p>
+              )}
+            </div>
+          )}
+          {is1RMDirect && value && (
+            <div className="rounded-xl border border-success/20 bg-success/5 p-4">
+              <p className="text-sm text-muted-foreground">True 1RM</p>
+              <p className="text-2xl font-bold text-success">{value} kg</p>
+              {relForce && (
+                <p className="text-sm text-muted-foreground">Relative: <span className="text-success">{relForce}x BW</span></p>
               )}
             </div>
           )}
@@ -253,47 +364,60 @@ export default function TestEntry() {
           </div>
         </motion.div>
 
-        {/* Right: Wellness */}
+        {/* Right: Optional Wellness + Submit */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
           className="glass-card space-y-6 rounded-2xl p-6"
         >
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Calendar className="h-5 w-5 text-primary" /> Wellness Check-in
-          </h3>
-
-          {[
-            { label: "Fatigue Level", value: fatigue, setter: setFatigue, desc: "1 = exhausted → 6 = fully rested" },
-            { label: "Sleep Quality", value: sleep, setter: setSleep, desc: "1 = terrible → 6 = excellent" },
-            { label: "Muscle Soreness", value: soreness, setter: setSoreness, desc: "1 = very sore → 6 = no soreness" },
-          ].map((item) => (
-            <div key={item.label}>
-              <div className="flex items-center justify-between">
-                <Label className="text-muted-foreground">{item.label}</Label>
-                <span className="text-sm font-bold text-primary">
-                  {item.value} — {wellnessLabels[item.value - 1]}
+          {/* Collapsible Wellness */}
+          <Collapsible open={wellnessOpen} onOpenChange={setWellnessOpen}>
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="flex w-full items-center justify-between rounded-xl border border-border bg-secondary/50 px-4 py-3 text-left transition-colors hover:bg-secondary"
+              >
+                <span className="flex items-center gap-2 text-lg font-semibold text-foreground">
+                  <Calendar className="h-5 w-5 text-primary" /> Wellness Check-in
+                  <span className="text-xs font-normal text-muted-foreground">(optional)</span>
                 </span>
-              </div>
-              <p className="mb-2 text-xs text-muted-foreground">{item.desc}</p>
-              <Slider
-                value={[item.value]}
-                onValueChange={([v]) => item.setter(v)}
-                min={1}
-                max={6}
-                step={1}
-                className="mt-1"
-              />
-            </div>
-          ))}
+                <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform ${wellnessOpen ? "rotate-180" : ""}`} />
+              </button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-4 space-y-6">
+              {[
+                { label: "Fatigue Level", value: fatigue, setter: setFatigue, desc: "1 = exhausted → 6 = fully rested" },
+                { label: "Sleep Quality", value: sleep, setter: setSleep, desc: "1 = terrible → 6 = excellent" },
+                { label: "Muscle Soreness", value: soreness, setter: setSoreness, desc: "1 = very sore → 6 = no soreness" },
+              ].map((item) => (
+                <div key={item.label}>
+                  <div className="flex items-center justify-between">
+                    <Label className="text-muted-foreground">{item.label}</Label>
+                    <span className="text-sm font-bold text-primary">
+                      {item.value} — {wellnessLabels[item.value - 1]}
+                    </span>
+                  </div>
+                  <p className="mb-2 text-xs text-muted-foreground">{item.desc}</p>
+                  <Slider
+                    value={[item.value]}
+                    onValueChange={([v]) => item.setter(v)}
+                    min={1}
+                    max={6}
+                    step={1}
+                    className="mt-1"
+                  />
+                </div>
+              ))}
 
-          <div className="rounded-xl border border-border bg-secondary/50 p-4 text-center">
-            <p className="text-sm text-muted-foreground">Wellness Score</p>
-            <p className="text-3xl font-bold text-foreground">
-              {((fatigue + sleep + soreness) / 3).toFixed(1)}
-            </p>
-            <p className="text-xs text-muted-foreground">/6.0</p>
-          </div>
+              <div className="rounded-xl border border-border bg-secondary/50 p-4 text-center">
+                <p className="text-sm text-muted-foreground">Wellness Score</p>
+                <p className="text-3xl font-bold text-foreground">
+                  {((fatigue + sleep + soreness) / 3).toFixed(1)}
+                </p>
+                <p className="text-xs text-muted-foreground">/6.0</p>
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
 
           <Button
             type="submit"

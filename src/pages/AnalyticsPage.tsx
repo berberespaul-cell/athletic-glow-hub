@@ -2,10 +2,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { progressionDelta, coefficientOfVariation, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, relativeForce } from "@/lib/calculations";
+import { progressionDelta, coefficientOfVariation, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, relativeForce, isStrengthTest } from "@/lib/calculations";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { BarChart3, TrendingUp, Target, Gauge } from "lucide-react";
 
 export default function AnalyticsPage() {
@@ -42,29 +42,34 @@ export default function AnalyticsPage() {
     },
   });
 
-  // Tests that have results
   const testedIds = [...new Set(allResults?.map(r => r.test_id) || [])];
   const testedTests = tests?.filter(t => testedIds.includes(t.id)) || [];
 
-  // Progression data for selected test
   const selectedResults = selectedTestId
     ? allResults?.filter(r => r.test_id === selectedTestId) || []
     : [];
   const selectedTest = tests?.find(t => t.id === selectedTestId);
+  const isSelectedStrength = selectedTest && isStrengthTest(selectedTest.family);
 
-  const chartData = selectedResults.map((r, i) => ({
-    date: r.session_date,
-    value: Number(r.value),
-    delta: i > 0
-      ? progressionDelta(
-          Number(selectedResults[i - 1].value),
-          Number(r.value),
-          isLowerBetter(selectedTest?.family || "")
-        )
-      : 0,
-  }));
+  const chartData = selectedResults.map((r, i) => {
+    const reps = r.reps ?? 1;
+    const is1RMDirect = reps === 1;
+    return {
+      date: r.session_date,
+      value: Number(r.value),
+      label: isSelectedStrength
+        ? (is1RMDirect ? `True 1RM` : `Est. 1RM (${reps}r)`)
+        : undefined,
+      delta: i > 0
+        ? progressionDelta(
+            Number(selectedResults[i - 1].value),
+            Number(r.value),
+            isLowerBetter(selectedTest?.family || "")
+          )
+        : 0,
+    };
+  });
 
-  // CV for selected test
   const cv = selectedResults.length >= 2
     ? coefficientOfVariation(selectedResults.map(r => Number(r.value)))
     : null;
@@ -82,17 +87,34 @@ export default function AnalyticsPage() {
   const cmjAbal = cmjVal && abalVal ? cmjAbalakovRatio(cmjVal, abalVal) : null;
 
   // Relative force for strength tests
-  const strengthTests = allResults?.filter((r: any) => ['strength', 'weightlifting'].includes(r.test_library?.family)) || [];
-  const latestStrength: { name: string; value: number; rf: number | null }[] = [];
+  const strengthTests = allResults?.filter((r: any) => isStrengthTest(r.test_library?.family)) || [];
+  const latestStrength: { name: string; value: number; rf: number | null; reps: number }[] = [];
   const seenStrength = new Set<string>();
   for (let i = strengthTests.length - 1; i >= 0; i--) {
     const r = strengthTests[i] as any;
     if (!seenStrength.has(r.test_id)) {
       seenStrength.add(r.test_id);
       const rf = profile?.weight_kg ? relativeForce(Number(r.value), Number(profile.weight_kg)) : null;
-      latestStrength.push({ name: r.test_library?.name, value: Number(r.value), rf });
+      latestStrength.push({ name: r.test_library?.name, value: Number(r.value), rf, reps: r.reps ?? 1 });
     }
   }
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    const d = payload[0].payload;
+    return (
+      <div className="rounded-xl border border-border bg-card p-3 text-sm shadow-lg">
+        <p className="text-muted-foreground">{d.date}</p>
+        <p className="font-bold text-primary">{d.value} {selectedTest?.unit}</p>
+        {d.label && <p className="text-xs text-muted-foreground">{d.label}</p>}
+        {d.delta !== 0 && (
+          <p className={`text-xs ${d.delta > 0 ? "text-success" : "text-destructive"}`}>
+            {d.delta > 0 ? "+" : ""}{d.delta}%
+          </p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-8">
@@ -134,6 +156,9 @@ export default function AnalyticsPage() {
               <span className="text-sm">{s.name}</span>
             </div>
             <p className="mt-2 text-3xl font-bold text-foreground">{s.value} kg</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              {s.reps === 1 ? "True 1RM" : `Est. 1RM (${s.reps} reps)`}
+            </p>
             {s.rf && <p className="mt-1 text-sm text-primary">{s.rf}x BW</p>}
           </motion.div>
         ))}
@@ -163,14 +188,7 @@ export default function AnalyticsPage() {
               <LineChart data={chartData}>
                 <XAxis dataKey="date" stroke="hsl(0 0% 64%)" fontSize={12} />
                 <YAxis stroke="hsl(0 0% 64%)" fontSize={12} />
-                <Tooltip
-                  contentStyle={{
-                    backgroundColor: "hsl(0 0% 10%)",
-                    border: "1px solid hsl(0 0% 18%)",
-                    borderRadius: "12px",
-                    color: "hsl(0 0% 95%)",
-                  }}
-                />
+                <Tooltip content={<CustomTooltip />} />
                 <Line
                   type="monotone"
                   dataKey="value"
