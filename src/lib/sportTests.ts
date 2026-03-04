@@ -13,12 +13,12 @@ export const FAMILY_LABELS: Record<TestFamily, string> = {
   anthropometric: "Anthropometric",
   jumps: "Jumps",
   sprints: "Sprints",
-  run: "Run / Endurance",
-  vma: "VMA / Intermittent",
+  run: "Endurance",
+  vma: "Endurance",
   strength: "Strength",
   weightlifting: "Weightlifting",
   streetlifting: "Streetlifting",
-  change_of_direction: "Change of Direction",
+  change_of_direction: "Agility",
 };
 
 export const FAMILY_ORDER: TestFamily[] = [
@@ -41,13 +41,13 @@ export const TEST_LIBRARY: TestDefinition[] = [
   { name: "Sprint 20m", family: "sprints", unit: "s", sports: ["basketball", "volleyball", "rugby", "hybrid"], description: "20-meter sprint. Acceleration to top speed." },
   { name: "Sprint 40m", family: "sprints", unit: "s", sports: ["rugby", "hybrid"], description: "40-meter sprint. Maximum velocity." },
   { name: "Sprint 100m", family: "sprints", unit: "s", sports: ["rugby", "hybrid"], description: "100-meter sprint. Speed endurance." },
-  // CHANGE OF DIRECTION
+  // AGILITY (change_of_direction)
   { name: "Lane Agility Drill", family: "change_of_direction", unit: "s", sports: ["basketball", "hybrid"], description: "NBA-standard agility test around the paint." },
   { name: "T-Test", family: "change_of_direction", unit: "s", sports: ["basketball", "volleyball", "hybrid"], description: "T-shaped agility test. Multi-directional speed." },
   { name: "T-Test Short", family: "change_of_direction", unit: "s", sports: ["volleyball"], description: "Shortened T-test for volleyball court." },
   { name: "Pro-Agility (5-10-5)", family: "change_of_direction", unit: "s", sports: ["rugby", "hybrid"], description: "NFL-style shuttle run." },
   { name: "5-0-5 Test", family: "change_of_direction", unit: "s", sports: ["rugby", "hybrid"], description: "180° change of direction test." },
-  // RUN / ENDURANCE
+  // ENDURANCE (run + vma)
   { name: "30-15 Intermittent Fitness Test (IFT)", family: "vma", unit: "km/h", sports: ["basketball", "hybrid"], description: "Berthoin protocol. Final stage speed = MAS." },
   { name: "Repeated Jump Ability (RJA)", family: "vma", unit: "index", sports: ["volleyball"], description: "Repeated jump series. Fatigue resistance." },
   { name: "Bronco Test", family: "run", unit: "s", sports: ["rugby", "hybrid"], description: "Rugby fitness: 3 x 20m shuttle (x5)." },
@@ -79,16 +79,14 @@ export const TEST_LIBRARY: TestDefinition[] = [
   { name: "Muscle Snatch (1RM)", family: "weightlifting", unit: "kg", sports: ["hybrid"], description: "Snatch without squat catch." },
   { name: "Hang Snatch (1RM)", family: "weightlifting", unit: "kg", sports: ["hybrid"], description: "Snatch from hang position." },
   { name: "Hang Power Snatch (1RM)", family: "weightlifting", unit: "kg", sports: ["hybrid"], description: "Power snatch from hang." },
-  // STREETLIFTING
-  { name: "Dips (Max Reps)", family: "streetlifting", unit: "reps", sports: ["basketball", "volleyball", "rugby", "hybrid"], description: "Maximum bodyweight dips." },
-  { name: "Weighted Dips (1RM)", family: "streetlifting", unit: "kg", sports: ["rugby", "hybrid"], description: "Dips with added load." },
-  { name: "Pull-Up (Max Reps)", family: "streetlifting", unit: "reps", sports: ["basketball", "volleyball", "rugby", "hybrid"], description: "Maximum bodyweight pull-ups." },
-  { name: "Weighted Pull-Up (1RM)", family: "streetlifting", unit: "kg", sports: ["rugby", "hybrid"], description: "Pull-ups with added load." },
-  { name: "Chin-Up (Max Reps)", family: "streetlifting", unit: "reps", sports: ["basketball", "volleyball", "rugby", "hybrid"], description: "Supinated grip pull-ups." },
-  { name: "Muscle-Up (Max Reps)", family: "streetlifting", unit: "reps", sports: ["hybrid"], description: "Bar muscle-up. Advanced skill." },
+  // STREETLIFTING — all track Load (kg) + Reps
+  { name: "Dips", family: "streetlifting", unit: "kg", sports: ["basketball", "volleyball", "rugby", "hybrid"], description: "Dips with added load (kg). Track load + reps for relative strength." },
+  { name: "Pull-Up", family: "streetlifting", unit: "kg", sports: ["basketball", "volleyball", "rugby", "hybrid"], description: "Pull-ups with added load (kg). Track load + reps for relative strength." },
+  { name: "Chin-Up", family: "streetlifting", unit: "kg", sports: ["basketball", "volleyball", "rugby", "hybrid"], description: "Chin-ups with added load (kg). Track load + reps for relative strength." },
+  { name: "Muscle-Up", family: "streetlifting", unit: "kg", sports: ["hybrid"], description: "Muscle-ups with added load (kg). Track load + reps for relative strength." },
 ];
 
-// Recommended batteries per sport (original PDF)
+// Recommended batteries per sport
 export const SPORT_TEST_BUNDLES: Record<string, string[]> = {
   basketball: [
     "CMJ (Counter Movement Jump)", "Abalakov Jump", "Squat Jump (SJ)", "Max Reach Jump",

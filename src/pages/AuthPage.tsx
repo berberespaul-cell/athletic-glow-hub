@@ -4,6 +4,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Activity, Zap } from "lucide-react";
@@ -16,6 +17,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [selectedRole, setSelectedRole] = useState<AppRole>("athlete");
+  const [sex, setSex] = useState<string>("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -38,8 +40,10 @@ export default function AuthPage() {
         if (data.user) {
           // Assign role
           await supabase.from("user_roles").insert({ user_id: data.user.id, role: selectedRole });
-          // Update profile name
-          await supabase.from("profiles").update({ name }).eq("user_id", data.user.id);
+          // Update profile name and sex
+          const updateData: Record<string, any> = { name };
+          if (sex) updateData.sex = sex;
+          await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
         }
         toast({ title: "Account created!", description: "You can now sign in." });
         navigate("/");
@@ -103,6 +107,19 @@ export default function AuthPage() {
                     </button>
                   ))}
                 </div>
+              </div>
+              <div>
+                <Label className="text-muted-foreground">Sex</Label>
+                <Select value={sex} onValueChange={setSex}>
+                  <SelectTrigger className="mt-1 border-border bg-secondary text-foreground">
+                    <SelectValue placeholder="Select..." />
+                  </SelectTrigger>
+                  <SelectContent className="border-border bg-card">
+                    <SelectItem value="male" className="text-foreground">Male</SelectItem>
+                    <SelectItem value="female" className="text-foreground">Female</SelectItem>
+                    <SelectItem value="other" className="text-foreground">Other</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
             </>
           )}

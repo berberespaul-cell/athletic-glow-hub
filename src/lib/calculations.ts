@@ -42,6 +42,13 @@ export function relativeForce(oneRM_kg: number, bodyWeight_kg: number): number {
   return parseFloat((oneRM_kg / bodyWeight_kg).toFixed(3));
 }
 
+// ── STREETLIFTING RELATIVE STRENGTH ───────────────────
+// For streetlifting: relative strength = (BW + added load) / BW
+export function streetliftingRelativeStrength(addedLoad_kg: number, bodyWeight_kg: number): number {
+  if (bodyWeight_kg === 0) throw new Error("Body weight cannot be 0");
+  return parseFloat(((bodyWeight_kg + addedLoad_kg) / bodyWeight_kg).toFixed(3));
+}
+
 // ── WELLNESS SCORE ────────────────────────────────────
 export function wellnessScore(fatigue: number, sleep: number, soreness: number): number {
   return parseFloat(((fatigue + sleep + soreness) / 3).toFixed(2));
@@ -83,4 +90,9 @@ export function isLowerBetter(family: string): boolean {
 const STRENGTH_FAMILIES = ['strength', 'weightlifting', 'streetlifting'];
 export function isStrengthTest(family: string): boolean {
   return STRENGTH_FAMILIES.includes(family);
+}
+
+// ── STREETLIFTING CHECK ───────────────────────────────
+export function isStreetlifting(family: string): boolean {
+  return family === 'streetlifting';
 }
