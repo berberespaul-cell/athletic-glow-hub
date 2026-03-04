@@ -108,7 +108,7 @@ export default function TestEntry() {
       if (wellnessOpen && menstrualPhase) {
         insertData.menstrual_phase = menstrualPhase;
       }
-      const { error } = await supabase.from("results").insert(insertData);
+      const { error } = await supabase.from("results").insert(insertData as any);
       if (error) throw error;
     },
     onSuccess: () => {
