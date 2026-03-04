@@ -87,6 +87,7 @@ export type Database = {
           id: string
           name: string
           position: string | null
+          sex: string | null
           sport: Database["public"]["Enums"]["sport_type"]
           updated_at: string | null
           user_id: string
@@ -99,6 +100,7 @@ export type Database = {
           id?: string
           name: string
           position?: string | null
+          sex?: string | null
           sport?: Database["public"]["Enums"]["sport_type"]
           updated_at?: string | null
           user_id: string
@@ -111,6 +113,7 @@ export type Database = {
           id?: string
           name?: string
           position?: string | null
+          sex?: string | null
           sport?: Database["public"]["Enums"]["sport_type"]
           updated_at?: string | null
           user_id?: string
@@ -122,6 +125,7 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
+          menstrual_phase: string | null
           notes: string | null
           profile_id: string
           reps: number | null
@@ -136,6 +140,7 @@ export type Database = {
         Insert: {
           created_at?: string | null
           id?: string
+          menstrual_phase?: string | null
           notes?: string | null
           profile_id: string
           reps?: number | null
@@ -150,6 +155,7 @@ export type Database = {
         Update: {
           created_at?: string | null
           id?: string
+          menstrual_phase?: string | null
           notes?: string | null
           profile_id?: string
           reps?: number | null

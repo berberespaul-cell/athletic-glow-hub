@@ -3,7 +3,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getTestsForSport, getRecommendedTestNames, FAMILY_LABELS, FAMILY_ORDER, type SportType, type TestFamily } from "@/lib/sportTests";
-import { brzycki1RM, isStrengthTest, relativeForce } from "@/lib/calculations";
+import { brzycki1RM, isStrengthTest, isStreetlifting, relativeForce, streetliftingRelativeStrength } from "@/lib/calculations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,6 +14,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Calendar, CheckCircle2, Dumbbell, ChevronDown, Library, Star } from "lucide-react";
+
+const MENSTRUAL_PHASES = [
+  { value: "follicular", label: "Follicular" },
+  { value: "ovulation", label: "Ovulation" },
+  { value: "luteal", label: "Luteal" },
+  { value: "menstruation", label: "Menstruation" },
+];
 
 export default function TestEntry() {
   const { profileId } = useAuth();
@@ -26,6 +33,7 @@ export default function TestEntry() {
   const [fatigue, setFatigue] = useState(4);
   const [sleep, setSleep] = useState(4);
   const [soreness, setSoreness] = useState(4);
+  const [menstrualPhase, setMenstrualPhase] = useState("");
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [showAllTests, setShowAllTests] = useState(false);
@@ -48,10 +56,11 @@ export default function TestEntry() {
   });
 
   const sport = (profile?.sport || "hybrid") as SportType;
+  const profileSex = (profile as any)?.sex || "";
+  const showMenstrualPhase = profileSex === "female" || profileSex === "other";
   const recommendedNames = getRecommendedTestNames(sport);
   const sportTests = getTestsForSport(sport);
 
-  // Split tests into recommended vs all
   const recommendedTests = tests?.filter(t => recommendedNames.includes(t.name)) || [];
   const allSportTests = tests?.filter(t => {
     const st = sportTests.find(s => s.name === t.name);
@@ -59,12 +68,23 @@ export default function TestEntry() {
   }) || [];
 
   const selectedTest = tests?.find(t => t.id === selectedTestId);
-  const showReps = selectedTest && isStrengthTest(selectedTest.family);
+  const isStrength = selectedTest && isStrengthTest(selectedTest.family);
+  const isStreet = selectedTest && isStreetlifting(selectedTest.family);
+  const showReps = isStrength; // strength + weightlifting + streetlifting all track reps
 
-  const estimated1RM = showReps && value && reps && Number(reps) > 1
+  // Streetlifting: value = added load, compute (BW + load)
+  const totalLoad = isStreet && value && profile?.weight_kg
+    ? Number(profile.weight_kg) + Number(value)
+    : null;
+  const streetRelStrength = isStreet && value && profile?.weight_kg
+    ? streetliftingRelativeStrength(Number(value), Number(profile.weight_kg))
+    : null;
+
+  // Standard strength 1RM
+  const estimated1RM = isStrength && !isStreet && value && reps && Number(reps) > 1
     ? brzycki1RM(Number(value), Number(reps))
     : null;
-  const is1RMDirect = showReps && (!reps || Number(reps) === 1);
+  const is1RMDirect = isStrength && !isStreet && (!reps || Number(reps) === 1);
   const relForce = (estimated1RM || (is1RMDirect && value)) && profile?.weight_kg
     ? relativeForce(estimated1RM || Number(value), Number(profile.weight_kg))
     : null;
@@ -76,7 +96,7 @@ export default function TestEntry() {
         wellness_sleep: sleep,
         wellness_soreness: soreness,
       } : {};
-      const { error } = await supabase.from("results").insert({
+      const insertData: Record<string, any> = {
         profile_id: profileId!,
         test_id: selectedTestId,
         session_date: sessionDate,
@@ -84,7 +104,11 @@ export default function TestEntry() {
         reps: reps ? Number(reps) : null,
         ...wellnessData,
         notes: notes || null,
-      });
+      };
+      if (wellnessOpen && menstrualPhase) {
+        insertData.menstrual_phase = menstrualPhase;
+      }
+      const { error } = await supabase.from("results").insert(insertData as any);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -112,6 +136,7 @@ export default function TestEntry() {
     setFatigue(4);
     setSleep(4);
     setSoreness(4);
+    setMenstrualPhase("");
     setWellnessOpen(false);
     setSubmitted(false);
   };
@@ -130,9 +155,21 @@ export default function TestEntry() {
           <p className="mt-2 text-muted-foreground">
             {selectedTest?.name}: <span className="font-bold text-primary">{value} {selectedTest?.unit}</span>
           </p>
+          {isStreet && totalLoad && (
+            <>
+              <p className="mt-1 text-muted-foreground">
+                Total Load (BW + Added): <span className="font-bold text-primary">{totalLoad.toFixed(1)} kg</span>
+              </p>
+              {streetRelStrength && (
+                <p className="mt-1 text-muted-foreground">
+                  Relative Strength: <span className="font-bold text-primary">{streetRelStrength}x BW</span>
+                </p>
+              )}
+            </>
+          )}
           {estimated1RM && (
             <p className="mt-1 text-muted-foreground">
-              Estimated 1RM (Brzycki): <span className="font-bold text-primary">{estimated1RM} kg</span>
+              Est. 1RM (Brzycki): <span className="font-bold text-primary">{estimated1RM} kg</span>
             </p>
           )}
           {is1RMDirect && value && (
@@ -153,7 +190,6 @@ export default function TestEntry() {
     );
   }
 
-  // Group tests by family for "Browse All"
   const groupByFamily = (testList: typeof allSportTests) => {
     const grouped: Partial<Record<TestFamily, typeof allSportTests>> = {};
     testList.forEach(t => {
@@ -168,26 +204,6 @@ export default function TestEntry() {
   const allByFamily = groupByFamily(allSportTests);
 
   const wellnessLabels = ["Very Poor", "Poor", "Fair", "Good", "Very Good", "Excellent"];
-
-  const renderTestSelect = (testList: typeof tests, label: string, icon: React.ReactNode) => {
-    const grouped = groupByFamily(testList || []);
-    return (
-      <>
-        {FAMILY_ORDER.filter(f => grouped[f]?.length).map(family => (
-          <div key={family}>
-            <div className="px-2 py-1 text-xs font-bold uppercase text-muted-foreground">
-              {FAMILY_LABELS[family]}
-            </div>
-            {grouped[family]!.map(t => (
-              <SelectItem key={t.id} value={t.id} className="text-foreground">
-                {t.name} ({t.unit})
-              </SelectItem>
-            ))}
-          </div>
-        ))}
-      </>
-    );
-  };
 
   return (
     <div className="space-y-6">
@@ -237,7 +253,6 @@ export default function TestEntry() {
                   </>
                 )}
 
-                {/* All other tests for the sport */}
                 {showAllTests && Object.keys(allByFamily).length > 0 && (
                   <>
                     <div className="flex items-center gap-1 px-2 py-1.5 text-xs font-bold uppercase text-muted-foreground">
@@ -258,7 +273,6 @@ export default function TestEntry() {
                   </>
                 )}
 
-                {/* For hybrid, just show everything grouped */}
                 {sport === 'hybrid' && (() => {
                   const allGrouped = groupByFamily(tests || []);
                   return FAMILY_ORDER.filter(f => allGrouped[f]?.length).map(family => (
@@ -277,7 +291,6 @@ export default function TestEntry() {
               </SelectContent>
             </Select>
 
-            {/* Browse All button for non-hybrid */}
             {sport !== 'hybrid' && !showAllTests && (
               <Button
                 type="button"
@@ -297,20 +310,24 @@ export default function TestEntry() {
 
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Label className="text-muted-foreground">Value ({selectedTest?.unit || "—"})</Label>
+              <Label className="text-muted-foreground">
+                {isStreet ? "Added Load (kg)" : `Value (${selectedTest?.unit || "—"})`}
+              </Label>
               <Input
                 type="number"
                 step="0.01"
                 value={value}
                 onChange={(e) => setValue(e.target.value)}
-                placeholder="0.00"
+                placeholder={isStreet ? "0 = bodyweight only" : "0.00"}
                 required
                 className="mt-1 border-border bg-secondary text-foreground"
               />
             </div>
             {showReps && (
               <div>
-                <Label className="text-muted-foreground">Reps (1 = True 1RM)</Label>
+                <Label className="text-muted-foreground">
+                  {isStreet ? "Reps" : "Reps (1 = True 1RM)"}
+                </Label>
                 <Input
                   type="number"
                   min="1"
@@ -324,6 +341,18 @@ export default function TestEntry() {
             )}
           </div>
 
+          {/* Streetlifting computed metrics */}
+          {isStreet && value && profile?.weight_kg && (
+            <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <p className="text-sm text-muted-foreground">Total Load (BW + Added)</p>
+              <p className="text-2xl font-bold text-primary">{totalLoad?.toFixed(1)} kg</p>
+              {streetRelStrength && (
+                <p className="text-sm text-muted-foreground">Relative: <span className="text-primary">{streetRelStrength}x BW</span></p>
+              )}
+            </div>
+          )}
+
+          {/* Standard strength computed metrics */}
           {estimated1RM && (
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
               <p className="text-sm text-muted-foreground">Estimated 1RM (Brzycki)</p>
@@ -370,7 +399,6 @@ export default function TestEntry() {
           animate={{ opacity: 1, x: 0 }}
           className="glass-card space-y-6 rounded-2xl p-6"
         >
-          {/* Collapsible Wellness */}
           <Collapsible open={wellnessOpen} onOpenChange={setWellnessOpen}>
             <CollapsibleTrigger asChild>
               <button
@@ -408,6 +436,23 @@ export default function TestEntry() {
                   />
                 </div>
               ))}
+
+              {/* Menstrual Cycle Phase — visible only for female/other */}
+              {showMenstrualPhase && (
+                <div>
+                  <Label className="text-muted-foreground">Menstrual Cycle Phase (optional)</Label>
+                  <Select value={menstrualPhase} onValueChange={setMenstrualPhase}>
+                    <SelectTrigger className="mt-1 border-border bg-secondary text-foreground">
+                      <SelectValue placeholder="Select phase..." />
+                    </SelectTrigger>
+                    <SelectContent className="border-border bg-card">
+                      {MENSTRUAL_PHASES.map(p => (
+                        <SelectItem key={p.value} value={p.value} className="text-foreground">{p.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               <div className="rounded-xl border border-border bg-secondary/50 p-4 text-center">
                 <p className="text-sm text-muted-foreground">Wellness Score</p>

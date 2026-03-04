@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { progressionDelta, coefficientOfVariation, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, relativeForce, isStrengthTest } from "@/lib/calculations";
+import { progressionDelta, coefficientOfVariation, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, relativeForce, isStrengthTest, isStreetlifting, streetliftingRelativeStrength } from "@/lib/calculations";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
@@ -50,6 +50,7 @@ export default function AnalyticsPage() {
     : [];
   const selectedTest = tests?.find(t => t.id === selectedTestId);
   const isSelectedStrength = selectedTest && isStrengthTest(selectedTest.family);
+  const isSelectedStreet = selectedTest && isStreetlifting(selectedTest.family);
 
   const chartData = selectedResults.map((r, i) => {
     const reps = r.reps ?? 1;
@@ -57,7 +58,9 @@ export default function AnalyticsPage() {
     return {
       date: r.session_date,
       value: Number(r.value),
-      label: isSelectedStrength
+      label: isSelectedStreet
+        ? `Load: ${r.value}kg`
+        : isSelectedStrength
         ? (is1RMDirect ? `True 1RM` : `Est. 1RM (${reps}r)`)
         : undefined,
       delta: i > 0
@@ -87,7 +90,7 @@ export default function AnalyticsPage() {
   const cmjAbal = cmjVal && abalVal ? cmjAbalakovRatio(cmjVal, abalVal) : null;
 
   // Relative force for strength tests
-  const strengthTests = allResults?.filter((r: any) => isStrengthTest(r.test_library?.family)) || [];
+  const strengthTests = allResults?.filter((r: any) => isStrengthTest(r.test_library?.family) && !isStreetlifting(r.test_library?.family)) || [];
   const latestStrength: { name: string; value: number; rf: number | null; reps: number }[] = [];
   const seenStrength = new Set<string>();
   for (let i = strengthTests.length - 1; i >= 0; i--) {
@@ -96,6 +99,19 @@ export default function AnalyticsPage() {
       seenStrength.add(r.test_id);
       const rf = profile?.weight_kg ? relativeForce(Number(r.value), Number(profile.weight_kg)) : null;
       latestStrength.push({ name: r.test_library?.name, value: Number(r.value), rf, reps: r.reps ?? 1 });
+    }
+  }
+
+  // Streetlifting relative strength cards
+  const streetTests = allResults?.filter((r: any) => isStreetlifting(r.test_library?.family)) || [];
+  const latestStreet: { name: string; load: number; rs: number | null; reps: number }[] = [];
+  const seenStreet = new Set<string>();
+  for (let i = streetTests.length - 1; i >= 0; i--) {
+    const r = streetTests[i] as any;
+    if (!seenStreet.has(r.test_id)) {
+      seenStreet.add(r.test_id);
+      const rs = profile?.weight_kg ? streetliftingRelativeStrength(Number(r.value), Number(profile.weight_kg)) : null;
+      latestStreet.push({ name: r.test_library?.name, load: Number(r.value), rs, reps: r.reps ?? 1 });
     }
   }
 
@@ -123,7 +139,7 @@ export default function AnalyticsPage() {
         <p className="mt-1 text-muted-foreground">Performance trends and insights</p>
       </div>
 
-      {/* Jump Ratios + Strength */}
+      {/* Jump Ratios + Strength + Streetlifting */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {cmjSj !== null && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6">
@@ -160,6 +176,19 @@ export default function AnalyticsPage() {
               {s.reps === 1 ? "True 1RM" : `Est. 1RM (${s.reps} reps)`}
             </p>
             {s.rf && <p className="mt-1 text-sm text-primary">{s.rf}x BW</p>}
+          </motion.div>
+        ))}
+        {latestStreet.map((s, i) => (
+          <motion.div key={s.name} initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 * (i + latestStrength.length + 2) }} className="glass-card rounded-2xl p-6">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <Gauge className="h-4 w-4 text-primary" />
+              <span className="text-sm">{s.name}</span>
+            </div>
+            <p className="mt-2 text-3xl font-bold text-foreground">+{s.load} kg</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              Added load • {s.reps} rep{s.reps > 1 ? "s" : ""}
+            </p>
+            {s.rs && <p className="mt-1 text-sm text-primary">{s.rs}x BW (total)</p>}
           </motion.div>
         ))}
       </div>

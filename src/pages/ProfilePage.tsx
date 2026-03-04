@@ -46,6 +46,7 @@ export default function ProfilePage() {
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
   const [birthDate, setBirthDate] = useState("");
+  const [sex, setSex] = useState("");
   const [newWeight, setNewWeight] = useState("");
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export default function ProfilePage() {
       setWeight(profile.weight_kg ? String(profile.weight_kg) : "");
       setHeight(profile.height_cm ? String(profile.height_cm) : "");
       setBirthDate(profile.birth_date || "");
+      setSex((profile as any).sex || "");
     }
   }, [profile]);
 
@@ -70,7 +72,8 @@ export default function ProfilePage() {
           weight_kg: weight ? Number(weight) : null,
           height_cm: height ? Number(height) : null,
           birth_date: birthDate || null,
-        })
+          sex: sex || null,
+        } as any)
         .eq("id", profileId!);
       if (error) throw error;
     },
@@ -87,13 +90,11 @@ export default function ProfilePage() {
     mutationFn: async () => {
       const w = Number(newWeight);
       if (!w || w <= 0) throw new Error("Invalid weight");
-      // Insert weight log
       const { error: logErr } = await supabase.from("weight_logs").insert({
         profile_id: profileId!,
         weight_kg: w,
       });
       if (logErr) throw logErr;
-      // Also update profile weight
       const { error: profErr } = await supabase
         .from("profiles")
         .update({ weight_kg: w })
@@ -115,7 +116,6 @@ export default function ProfilePage() {
   const testBattery = getTestsForSport(sport);
   const recommendedNames = getRecommendedTestNames(sport);
 
-  // Group battery by family
   const batteryByFamily: Partial<Record<TestFamily, typeof testBattery>> = {};
   testBattery.forEach(t => {
     if (!batteryByFamily[t.family]) batteryByFamily[t.family] = [];
@@ -168,6 +168,19 @@ export default function ProfilePage() {
                   {SPORTS.map(s => (
                     <SelectItem key={s} value={s} className="capitalize text-foreground">{s}</SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-muted-foreground">Sex</Label>
+              <Select value={sex} onValueChange={setSex}>
+                <SelectTrigger className="mt-1 border-border bg-secondary text-foreground">
+                  <SelectValue placeholder="Select..." />
+                </SelectTrigger>
+                <SelectContent className="border-border bg-card">
+                  <SelectItem value="male" className="text-foreground">Male</SelectItem>
+                  <SelectItem value="female" className="text-foreground">Female</SelectItem>
+                  <SelectItem value="other" className="text-foreground">Other</SelectItem>
                 </SelectContent>
               </Select>
             </div>

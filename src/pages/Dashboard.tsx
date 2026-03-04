@@ -2,9 +2,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { wellnessLabel, progressionDelta, isLowerBetter } from "@/lib/calculations";
+import { progressionDelta, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, isStreetlifting, streetliftingRelativeStrength } from "@/lib/calculations";
 import { FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
-import { Activity, TrendingUp, TrendingDown, Minus, Zap, Timer, Dumbbell, Weight } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, Minus, Target } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 
 export default function Dashboard() {
   const { profileId, role } = useAuth();
@@ -33,10 +34,7 @@ export default function Dashboard() {
     enabled: !!profileId,
   });
 
-  const latestWellness = allResults?.find(r => r.wellness_score !== null);
-  const wl = latestWellness?.wellness_score ? wellnessLabel(Number(latestWellness.wellness_score)) : null;
-
-  // Build categorized summary: latest value vs PB with trend %
+  // Build categorized summary
   type TestSummary = {
     testId: string;
     name: string;
@@ -46,13 +44,15 @@ export default function Dashboard() {
     latestDate: string;
     pb: number;
     isPB: boolean;
-    trend: number | null; // % change from previous to latest
+    trend: number | null;
+    latestReps: number | null;
+    wellnessScore: number | null;
+    menstrualPhase: string | null;
   };
 
   const summaryByTest = new Map<string, TestSummary>();
 
   if (allResults) {
-    // allResults is sorted desc by session_date
     const grouped = new Map<string, typeof allResults>();
     allResults.forEach(r => {
       if (!grouped.has(r.test_id)) grouped.set(r.test_id, []);
@@ -80,6 +80,9 @@ export default function Dashboard() {
         pb,
         isPB: Number(latest.value) === pb,
         trend,
+        latestReps: latest.reps ?? null,
+        wellnessScore: latest.wellness_score ? Number(latest.wellness_score) : null,
+        menstrualPhase: (latest as any).menstrual_phase || null,
       });
     });
   }
@@ -92,6 +95,17 @@ export default function Dashboard() {
     summariesByFamily[fam]!.push(s);
   });
 
+  // Jump ratios
+  const getLatestValue = (name: string) => {
+    const match = allResults?.find((r: any) => r.test_library?.name === name);
+    return match ? Number(match.value) : null;
+  };
+  const cmjVal = getLatestValue("CMJ (Counter Movement Jump)");
+  const sjVal = getLatestValue("Squat Jump (SJ)");
+  const abalVal = getLatestValue("Abalakov Jump");
+  const cmjSj = cmjVal && sjVal ? cmjSjRatio(cmjVal, sjVal) : null;
+  const cmjAbal = cmjVal && abalVal ? cmjAbalakovRatio(cmjVal, abalVal) : null;
+
   const TrendIcon = ({ trend }: { trend: number | null }) => {
     if (trend === null) return <Minus className="h-4 w-4 text-muted-foreground" />;
     if (trend > 0) return <TrendingUp className="h-4 w-4 text-success" />;
@@ -99,94 +113,148 @@ export default function Dashboard() {
     return <Minus className="h-4 w-4 text-muted-foreground" />;
   };
 
+  const get1RMLabel = (s: TestSummary) => {
+    if (!['strength', 'weightlifting'].includes(s.family)) return null;
+    if (s.latestReps === null || s.latestReps === 1) return "True 1RM";
+    return `Est. 1RM (${s.latestReps}r)`;
+  };
+
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground">
-          Welcome back{profile?.name ? `, ${profile.name}` : ""}
-        </h1>
-        <p className="mt-1 text-muted-foreground">
-          {role === "coach" ? "Your team at a glance" : "Your performance overview"}
-        </p>
-      </div>
-
-      {/* Wellness Card */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="glass-card max-w-xs rounded-2xl p-6"
-      >
-        <p className="text-sm text-muted-foreground">Wellness Score</p>
-        <div className="mt-4 flex items-end gap-2">
-          <span className="text-4xl font-bold" style={{ color: wl?.color || "hsl(var(--muted-foreground))" }}>
-            {latestWellness?.wellness_score ? Number(latestWellness.wellness_score).toFixed(1) : "—"}
-          </span>
-          <span className="mb-1 text-sm" style={{ color: wl?.color }}>
-            {wl?.label || "No data"}
-          </span>
+    <TooltipProvider>
+      <div className="space-y-8">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">
+            Welcome back{profile?.name ? `, ${profile.name}` : ""}
+          </h1>
+          <p className="mt-1 text-muted-foreground">
+            {role === "coach" ? "Your team at a glance" : "Your performance overview"}
+          </p>
         </div>
-        <p className="mt-2 text-xs text-muted-foreground">/6.0 scale</p>
-      </motion.div>
 
-      {/* Categorized Summary */}
-      {FAMILY_ORDER.filter(f => summariesByFamily[f]?.length).map((family, fi) => (
-        <motion.div
-          key={family}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 * fi }}
-          className="glass-card rounded-2xl p-6"
-        >
-          <h2 className="mb-4 text-lg font-semibold capitalize text-foreground">
-            {FAMILY_LABELS[family]}
-          </h2>
-          <div className="space-y-2">
-            {summariesByFamily[family]!.map(s => (
-              <div
-                key={s.testId}
-                className="flex items-center justify-between rounded-xl bg-secondary/50 px-4 py-3"
-              >
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-medium text-foreground">{s.name}</p>
-                  <p className="text-xs text-muted-foreground">{s.latestDate}</p>
+        {/* Jump Ratio Cards */}
+        {(cmjSj !== null || cmjAbal !== null) && (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {cmjSj !== null && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-5">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Target className="h-4 w-4 text-primary" />
+                  <span className="text-sm">CMJ / SJ Ratio</span>
                 </div>
-                <div className="flex items-center gap-4 text-right">
-                  <div>
-                    <p className="text-lg font-bold text-primary">
-                      {s.latest} {s.unit}
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      PB: {s.pb} {s.unit} {s.isPB && "🏆"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-1">
-                    <TrendIcon trend={s.trend} />
-                    {s.trend !== null && (
-                      <span className={`text-sm font-bold ${s.trend > 0 ? "text-success" : s.trend < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                        {s.trend > 0 ? "+" : ""}{s.trend}%
-                      </span>
-                    )}
-                  </div>
+                <p className="mt-2 text-3xl font-bold text-foreground">{cmjSj}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {cmjSj >= 1.05 && cmjSj <= 1.2 ? "✅ Optimal SSC" : cmjSj > 1.2 ? "⚠️ Over-reliant on SSC" : "⚠️ Low SSC"}
+                </p>
+              </motion.div>
+            )}
+            {cmjAbal !== null && (
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card rounded-2xl p-5">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Target className="h-4 w-4 text-primary" />
+                  <span className="text-sm">CMJ / Abalakov</span>
                 </div>
-              </div>
-            ))}
+                <p className="mt-2 text-3xl font-bold text-foreground">{cmjAbal}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {cmjAbal >= 0.8 && cmjAbal <= 0.95 ? "✅ Good arm coordination" : cmjAbal < 0.8 ? "⚠️ Poor coordination" : "✅ Minimal arm contribution"}
+                </p>
+              </motion.div>
+            )}
           </div>
-        </motion.div>
-      ))}
+        )}
 
-      {/* Empty state */}
-      {summaryByTest.size === 0 && (
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="glass-card rounded-2xl p-6"
-        >
-          <div className="flex flex-col items-center py-12 text-center">
-            <Activity className="mb-3 h-12 w-12 text-muted-foreground/30" />
-            <p className="text-muted-foreground">No results yet. Start by recording a test!</p>
-          </div>
-        </motion.div>
-      )}
-    </div>
+        {/* Categorized Summary */}
+        {FAMILY_ORDER.filter(f => summariesByFamily[f]?.length).map((family, fi) => (
+          <motion.div
+            key={family}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 * fi }}
+            className="glass-card rounded-2xl p-6"
+          >
+            <h2 className="mb-4 text-lg font-semibold capitalize text-foreground">
+              {FAMILY_LABELS[family]}
+            </h2>
+            <div className="space-y-2">
+              {summariesByFamily[family]!.map(s => {
+                const rmLabel = get1RMLabel(s);
+                const isStreet = isStreetlifting(s.family);
+                const streetRS = isStreet && profile?.weight_kg
+                  ? streetliftingRelativeStrength(s.latest, Number(profile.weight_kg))
+                  : null;
+
+                return (
+                  <div
+                    key={s.testId}
+                    className="flex items-center justify-between rounded-xl bg-secondary/50 px-4 py-3"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium text-foreground">{s.name}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <span>{s.latestDate}</span>
+                        {rmLabel && <span className="text-primary/80">• {rmLabel}</span>}
+                        {isStreet && streetRS && (
+                          <span className="text-primary/80">• {streetRS}x BW</span>
+                        )}
+                        {/* Contextual wellness icon */}
+                        {s.wellnessScore !== null && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help">😴 {s.wellnessScore.toFixed(1)}</span>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              Wellness: {s.wellnessScore.toFixed(1)}/6
+                              {s.menstrualPhase && ` • ${s.menstrualPhase}`}
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                        {!s.wellnessScore && s.menstrualPhase && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="cursor-help">🔴</span>
+                            </TooltipTrigger>
+                            <TooltipContent>Phase: {s.menstrualPhase}</TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-4 text-right">
+                      <div>
+                        <p className="text-lg font-bold text-primary">
+                          {s.latest} {s.unit}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          PB: {s.pb} {s.unit} {s.isPB && "🏆"}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <TrendIcon trend={s.trend} />
+                        {s.trend !== null && (
+                          <span className={`text-sm font-bold ${s.trend > 0 ? "text-success" : s.trend < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                            {s.trend > 0 ? "+" : ""}{s.trend}%
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </motion.div>
+        ))}
+
+        {/* Empty state */}
+        {summaryByTest.size === 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="glass-card rounded-2xl p-6"
+          >
+            <div className="flex flex-col items-center py-12 text-center">
+              <Activity className="mb-3 h-12 w-12 text-muted-foreground/30" />
+              <p className="text-muted-foreground">No results yet. Start by recording a test!</p>
+            </div>
+          </motion.div>
+        )}
+      </div>
+    </TooltipProvider>
   );
 }
