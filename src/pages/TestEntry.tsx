@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getTestsForSport, getRecommendedTestNames, FAMILY_LABELS, FAMILY_ORDER, type SportType, type TestFamily } from "@/lib/sportTests";
-import { brzycki1RM, isStrengthTest, isStreetlifting, relativeForce, streetliftingRelativeStrength } from "@/lib/calculations";
+import { brzycki1RM, isStrengthTest, isStreetlifting, relativeForce, streetliftingRelativeStrength, cycleDayToPhase } from "@/lib/calculations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,13 +14,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
 import { Calendar, CheckCircle2, Dumbbell, ChevronDown, Library, Star } from "lucide-react";
-
-const MENSTRUAL_PHASES = [
-  { value: "follicular", label: "Follicular" },
-  { value: "ovulation", label: "Ovulation" },
-  { value: "luteal", label: "Luteal" },
-  { value: "menstruation", label: "Menstruation" },
-];
 
 export default function TestEntry() {
   const { profileId } = useAuth();
@@ -33,7 +26,8 @@ export default function TestEntry() {
   const [fatigue, setFatigue] = useState(4);
   const [sleep, setSleep] = useState(4);
   const [soreness, setSoreness] = useState(4);
-  const [menstrualPhase, setMenstrualPhase] = useState("");
+  const [periodPain, setPeriodPain] = useState(1);
+  const [cycleDay, setCycleDay] = useState("");
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [showAllTests, setShowAllTests] = useState(false);
@@ -57,7 +51,7 @@ export default function TestEntry() {
 
   const sport = (profile?.sport || "hybrid") as SportType;
   const profileSex = (profile as any)?.sex || "";
-  const showMenstrualPhase = profileSex === "female" || profileSex === "other";
+  const showCycleTracking = profileSex === "female" || profileSex === "other";
   const recommendedNames = getRecommendedTestNames(sport);
   const sportTests = getTestsForSport(sport);
 
@@ -70,24 +64,24 @@ export default function TestEntry() {
   const selectedTest = tests?.find(t => t.id === selectedTestId);
   const isStrength = selectedTest && isStrengthTest(selectedTest.family);
   const isStreet = selectedTest && isStreetlifting(selectedTest.family);
-  const showReps = isStrength; // strength + weightlifting + streetlifting all track reps
+  const showReps = isStrength;
 
-  // Streetlifting: value = added load, compute (BW + load)
   const totalLoad = isStreet && value && profile?.weight_kg
-    ? Number(profile.weight_kg) + Number(value)
-    : null;
+    ? Number(profile.weight_kg) + Number(value) : null;
   const streetRelStrength = isStreet && value && profile?.weight_kg
-    ? streetliftingRelativeStrength(Number(value), Number(profile.weight_kg))
-    : null;
-
-  // Standard strength 1RM
+    ? streetliftingRelativeStrength(Number(value), Number(profile.weight_kg)) : null;
   const estimated1RM = isStrength && !isStreet && value && reps && Number(reps) > 1
-    ? brzycki1RM(Number(value), Number(reps))
-    : null;
+    ? brzycki1RM(Number(value), Number(reps)) : null;
   const is1RMDirect = isStrength && !isStreet && (!reps || Number(reps) === 1);
   const relForce = (estimated1RM || (is1RMDirect && value)) && profile?.weight_kg
-    ? relativeForce(estimated1RM || Number(value), Number(profile.weight_kg))
-    : null;
+    ? relativeForce(estimated1RM || Number(value), Number(profile.weight_kg)) : null;
+
+  // Cycle day → phase calculation
+  const cycleDayNum = cycleDay ? parseInt(cycleDay, 10) : null;
+  const cyclePhase = useMemo(() => {
+    if (!cycleDayNum || cycleDayNum < 1) return null;
+    return cycleDayToPhase(cycleDayNum);
+  }, [cycleDayNum]);
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -95,6 +89,7 @@ export default function TestEntry() {
         wellness_fatigue: fatigue,
         wellness_sleep: sleep,
         wellness_soreness: soreness,
+        ...(showCycleTracking ? { wellness_period_pain: periodPain } : {}),
       } : {};
       const insertData: Record<string, any> = {
         profile_id: profileId!,
@@ -105,8 +100,9 @@ export default function TestEntry() {
         ...wellnessData,
         notes: notes || null,
       };
-      if (wellnessOpen && menstrualPhase) {
-        insertData.menstrual_phase = menstrualPhase;
+      if (wellnessOpen && showCycleTracking && cycleDayNum && cycleDayNum >= 1) {
+        insertData.cycle_day = cycleDayNum;
+        insertData.menstrual_phase = cyclePhase?.phase || null;
       }
       const { error } = await supabase.from("results").insert(insertData as any);
       if (error) throw error;
@@ -136,7 +132,8 @@ export default function TestEntry() {
     setFatigue(4);
     setSleep(4);
     setSoreness(4);
-    setMenstrualPhase("");
+    setPeriodPain(1);
+    setCycleDay("");
     setWellnessOpen(false);
     setSubmitted(false);
   };
@@ -182,6 +179,11 @@ export default function TestEntry() {
               Relative Force: <span className="font-bold text-primary">{relForce}x BW</span>
             </p>
           )}
+          {cyclePhase && (
+            <p className="mt-1 text-muted-foreground">
+              Cycle: <span style={{ color: cyclePhase.color }} className="font-bold">{cyclePhase.label} — J{cycleDayNum}</span>
+            </p>
+          )}
           <Button onClick={handleReset} className="gradient-orange mt-6 text-primary-foreground">
             Record Another Test
           </Button>
@@ -202,7 +204,6 @@ export default function TestEntry() {
 
   const recommendedByFamily = groupByFamily(recommendedTests);
   const allByFamily = groupByFamily(allSportTests);
-
   const wellnessLabels = ["Very Poor", "Poor", "Fair", "Good", "Very Good", "Excellent"];
 
   return (
@@ -232,7 +233,6 @@ export default function TestEntry() {
                 <SelectValue placeholder="Choose a test..." />
               </SelectTrigger>
               <SelectContent className="max-h-80 border-border bg-card">
-                {/* Recommended Battery */}
                 {recommendedTests.length > 0 && (
                   <>
                     <div className="flex items-center gap-1 px-2 py-1.5 text-xs font-bold uppercase text-primary">
@@ -292,13 +292,8 @@ export default function TestEntry() {
             </Select>
 
             {sport !== 'hybrid' && !showAllTests && (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowAllTests(true)}
-                className="mt-2 text-xs text-primary hover:text-primary/80"
-              >
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowAllTests(true)}
+                className="mt-2 text-xs text-primary hover:text-primary/80">
                 <Library className="mr-1 h-3 w-3" /> Browse All Tests
               </Button>
             )}
@@ -313,30 +308,17 @@ export default function TestEntry() {
               <Label className="text-muted-foreground">
                 {isStreet ? "Added Load (kg)" : `Value (${selectedTest?.unit || "—"})`}
               </Label>
-              <Input
-                type="number"
-                step="0.01"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                placeholder={isStreet ? "0 = bodyweight only" : "0.00"}
-                required
-                className="mt-1 border-border bg-secondary text-foreground"
-              />
+              <Input type="number" step="0.01" value={value} onChange={(e) => setValue(e.target.value)}
+                placeholder={isStreet ? "0 = bodyweight only" : "0.00"} required
+                className="mt-1 border-border bg-secondary text-foreground" />
             </div>
             {showReps && (
               <div>
                 <Label className="text-muted-foreground">
                   {isStreet ? "Reps" : "Reps (1 = True 1RM)"}
                 </Label>
-                <Input
-                  type="number"
-                  min="1"
-                  max="36"
-                  value={reps}
-                  onChange={(e) => setReps(e.target.value)}
-                  placeholder="1"
-                  className="mt-1 border-border bg-secondary text-foreground"
-                />
+                <Input type="number" min="1" max="36" value={reps} onChange={(e) => setReps(e.target.value)}
+                  placeholder="1" className="mt-1 border-border bg-secondary text-foreground" />
               </div>
             )}
           </div>
@@ -352,7 +334,6 @@ export default function TestEntry() {
             </div>
           )}
 
-          {/* Standard strength computed metrics */}
           {estimated1RM && (
             <div className="rounded-xl border border-primary/20 bg-primary/5 p-4">
               <p className="text-sm text-muted-foreground">Estimated 1RM (Brzycki)</p>
@@ -374,26 +355,18 @@ export default function TestEntry() {
 
           <div>
             <Label className="text-muted-foreground">Session Date</Label>
-            <Input
-              type="date"
-              value={sessionDate}
-              onChange={(e) => setSessionDate(e.target.value)}
-              className="mt-1 border-border bg-secondary text-foreground"
-            />
+            <Input type="date" value={sessionDate} onChange={(e) => setSessionDate(e.target.value)}
+              className="mt-1 border-border bg-secondary text-foreground" />
           </div>
 
           <div>
             <Label className="text-muted-foreground">Notes (optional)</Label>
-            <Textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Any observations..."
-              className="mt-1 border-border bg-secondary text-foreground"
-            />
+            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)}
+              placeholder="Any observations..." className="mt-1 border-border bg-secondary text-foreground" />
           </div>
         </motion.div>
 
-        {/* Right: Optional Wellness + Submit */}
+        {/* Right: Wellness + Cycle + Submit */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
           animate={{ opacity: 1, x: 0 }}
@@ -401,10 +374,8 @@ export default function TestEntry() {
         >
           <Collapsible open={wellnessOpen} onOpenChange={setWellnessOpen}>
             <CollapsibleTrigger asChild>
-              <button
-                type="button"
-                className="flex w-full items-center justify-between rounded-xl border border-border bg-secondary/50 px-4 py-3 text-left transition-colors hover:bg-secondary"
-              >
+              <button type="button"
+                className="flex w-full items-center justify-between rounded-xl border border-border bg-secondary/50 px-4 py-3 text-left transition-colors hover:bg-secondary">
                 <span className="flex items-center gap-2 text-lg font-semibold text-foreground">
                   <Calendar className="h-5 w-5 text-primary" /> Wellness Check-in
                   <span className="text-xs font-normal text-muted-foreground">(optional)</span>
@@ -417,6 +388,7 @@ export default function TestEntry() {
                 { label: "Fatigue Level", value: fatigue, setter: setFatigue, desc: "1 = exhausted → 6 = fully rested" },
                 { label: "Sleep Quality", value: sleep, setter: setSleep, desc: "1 = terrible → 6 = excellent" },
                 { label: "Muscle Soreness", value: soreness, setter: setSoreness, desc: "1 = very sore → 6 = no soreness" },
+                ...(showCycleTracking ? [{ label: "Period Pain", value: periodPain, setter: setPeriodPain, desc: "1 = severe pain → 6 = no pain" }] : []),
               ].map((item) => (
                 <div key={item.label}>
                   <div className="flex items-center justify-between">
@@ -426,49 +398,54 @@ export default function TestEntry() {
                     </span>
                   </div>
                   <p className="mb-2 text-xs text-muted-foreground">{item.desc}</p>
-                  <Slider
-                    value={[item.value]}
-                    onValueChange={([v]) => item.setter(v)}
-                    min={1}
-                    max={6}
-                    step={1}
-                    className="mt-1"
-                  />
+                  <Slider value={[item.value]} onValueChange={([v]) => item.setter(v)} min={1} max={6} step={1} className="mt-1" />
                 </div>
               ))}
 
-              {/* Menstrual Cycle Phase — visible only for female/other */}
-              {showMenstrualPhase && (
+              {/* Cycle Day Input — visible only for female/other */}
+              {showCycleTracking && (
                 <div>
-                  <Label className="text-muted-foreground">Menstrual Cycle Phase (optional)</Label>
-                  <Select value={menstrualPhase} onValueChange={setMenstrualPhase}>
-                    <SelectTrigger className="mt-1 border-border bg-secondary text-foreground">
-                      <SelectValue placeholder="Select phase..." />
-                    </SelectTrigger>
-                    <SelectContent className="border-border bg-card">
-                      {MENSTRUAL_PHASES.map(p => (
-                        <SelectItem key={p.value} value={p.value} className="text-foreground">{p.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label className="text-muted-foreground">Days since Day 1 of period (J1)</Label>
+                  <p className="mb-2 text-xs text-muted-foreground">Enter cycle day to auto-calculate phase (optional)</p>
+                  <Input
+                    type="number"
+                    min="1"
+                    value={cycleDay}
+                    onChange={(e) => setCycleDay(e.target.value)}
+                    placeholder="e.g. 10"
+                    className="mt-1 border-border bg-secondary text-foreground"
+                  />
+                  {cyclePhase && cycleDayNum && cycleDayNum >= 1 && (
+                    <motion.div
+                      initial={{ opacity: 0, y: -5 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="mt-3 flex items-center gap-3 rounded-xl border border-border bg-secondary/50 p-3"
+                    >
+                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: cyclePhase.color }} />
+                      <div>
+                        <p className="text-sm font-semibold text-foreground">{cyclePhase.label}</p>
+                        <p className="text-xs text-muted-foreground">J{cycleDayNum}</p>
+                      </div>
+                    </motion.div>
+                  )}
                 </div>
               )}
 
               <div className="rounded-xl border border-border bg-secondary/50 p-4 text-center">
                 <p className="text-sm text-muted-foreground">Wellness Score</p>
                 <p className="text-3xl font-bold text-foreground">
-                  {((fatigue + sleep + soreness) / 3).toFixed(1)}
+                  {showCycleTracking
+                    ? ((fatigue + sleep + soreness + periodPain) / 4).toFixed(1)
+                    : ((fatigue + sleep + soreness) / 3).toFixed(1)
+                  }
                 </p>
                 <p className="text-xs text-muted-foreground">/6.0</p>
               </div>
             </CollapsibleContent>
           </Collapsible>
 
-          <Button
-            type="submit"
-            className="gradient-orange glow-orange w-full text-primary-foreground"
-            disabled={!selectedTestId || !value || mutation.isPending}
-          >
+          <Button type="submit" className="gradient-orange glow-orange w-full text-primary-foreground"
+            disabled={!selectedTestId || !value || mutation.isPending}>
             {mutation.isPending ? "Saving..." : "Save Result"}
           </Button>
         </motion.div>

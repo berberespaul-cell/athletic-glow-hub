@@ -2,11 +2,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { progressionDelta, coefficientOfVariation, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, relativeForce, isStrengthTest, isStreetlifting, streetliftingRelativeStrength } from "@/lib/calculations";
+import { progressionDelta, coefficientOfVariation, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, relativeForce, isStrengthTest, isStreetlifting, streetliftingRelativeStrength, cycleDayToPhase, wellnessScore } from "@/lib/calculations";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea } from "recharts";
 import { BarChart3, TrendingUp, Target, Gauge } from "lucide-react";
+
+// Phase background zones for chart
+const PHASE_COLORS: Record<string, string> = {
+  menstruation: "rgba(239,68,68,0.08)",
+  follicular: "rgba(34,197,94,0.08)",
+  ovulation: "rgba(234,179,8,0.08)",
+  luteal: "rgba(139,92,246,0.08)",
+};
 
 export default function AnalyticsPage() {
   const { profileId } = useAuth();
@@ -42,6 +50,9 @@ export default function AnalyticsPage() {
     },
   });
 
+  const profileSex = (profile as any)?.sex || "";
+  const showCycle = profileSex === "female" || profileSex === "other";
+
   const testedIds = [...new Set(allResults?.map(r => r.test_id) || [])];
   const testedTests = tests?.filter(t => testedIds.includes(t.id)) || [];
 
@@ -52,26 +63,58 @@ export default function AnalyticsPage() {
   const isSelectedStrength = selectedTest && isStrengthTest(selectedTest.family);
   const isSelectedStreet = selectedTest && isStreetlifting(selectedTest.family);
 
-  const chartData = selectedResults.map((r, i) => {
+  const chartData = selectedResults.map((r: any, i) => {
     const reps = r.reps ?? 1;
     const is1RMDirect = reps === 1;
+    const ws = r.wellness_fatigue && r.wellness_sleep && r.wellness_soreness
+      ? wellnessScore(r.wellness_fatigue, r.wellness_sleep, r.wellness_soreness)
+      : null;
+    const cycleDay = r.cycle_day ?? null;
+    const phase = cycleDay ? cycleDayToPhase(cycleDay) : null;
+    const delta = i > 0
+      ? progressionDelta(
+          Number(selectedResults[i - 1].value),
+          Number(r.value),
+          isLowerBetter(selectedTest?.family || "")
+        )
+      : 0;
+
     return {
       date: r.session_date,
       value: Number(r.value),
-      label: isSelectedStreet
+      rmLabel: isSelectedStreet
         ? `Load: ${r.value}kg`
         : isSelectedStrength
-        ? (is1RMDirect ? `True 1RM` : `Est. 1RM (${reps}r)`)
+        ? (is1RMDirect ? "True 1RM" : `Est. 1RM (${reps}r)`)
         : undefined,
-      delta: i > 0
-        ? progressionDelta(
-            Number(selectedResults[i - 1].value),
-            Number(r.value),
-            isLowerBetter(selectedTest?.family || "")
-          )
-        : 0,
+      wellnessScore: ws,
+      cycleDay,
+      phaseLabel: phase?.label || null,
+      phaseColor: phase?.color || null,
+      phaseName: phase?.phase || null,
+      delta,
+      reps,
     };
   });
+
+  // Build phase background zones for the chart
+  const phaseZones: { x1: string; x2: string; phase: string }[] = [];
+  if (showCycle && chartData.length > 0) {
+    let currentPhase = chartData[0].phaseName;
+    let zoneStart = chartData[0].date;
+    for (let i = 1; i < chartData.length; i++) {
+      if (chartData[i].phaseName !== currentPhase) {
+        if (currentPhase) {
+          phaseZones.push({ x1: zoneStart, x2: chartData[i - 1].date, phase: currentPhase });
+        }
+        currentPhase = chartData[i].phaseName;
+        zoneStart = chartData[i].date;
+      }
+    }
+    if (currentPhase) {
+      phaseZones.push({ x1: zoneStart, x2: chartData[chartData.length - 1].date, phase: currentPhase });
+    }
+  }
 
   const cv = selectedResults.length >= 2
     ? coefficientOfVariation(selectedResults.map(r => Number(r.value)))
@@ -102,7 +145,7 @@ export default function AnalyticsPage() {
     }
   }
 
-  // Streetlifting relative strength cards
+  // Streetlifting cards
   const streetTests = allResults?.filter((r: any) => isStreetlifting(r.test_library?.family)) || [];
   const latestStreet: { name: string; load: number; rs: number | null; reps: number }[] = [];
   const seenStreet = new Set<string>();
@@ -119,12 +162,26 @@ export default function AnalyticsPage() {
     if (!active || !payload?.length) return null;
     const d = payload[0].payload;
     return (
-      <div className="rounded-xl border border-border bg-card p-3 text-sm shadow-lg">
-        <p className="text-muted-foreground">{d.date}</p>
+      <div className="rounded-xl border border-border bg-card p-3 text-sm shadow-lg min-w-[200px]">
+        {/* 1. Date */}
+        <p className="font-semibold text-foreground">{d.date}</p>
+        {/* 2. Performance Result */}
         <p className="font-bold text-primary">{d.value} {selectedTest?.unit}</p>
-        {d.label && <p className="text-xs text-muted-foreground">{d.label}</p>}
+        {/* 3. 1RM Status */}
+        {d.rmLabel && <p className="text-xs text-muted-foreground">{d.rmLabel}</p>}
+        {/* 4. Average Wellness Score */}
+        {d.wellnessScore !== null && (
+          <p className="text-xs text-muted-foreground">Wellness: <span className="font-semibold text-foreground">{d.wellnessScore}/6</span></p>
+        )}
+        {/* 5. Menstrual Data (hidden for males) */}
+        {showCycle && d.phaseLabel && (
+          <p className="text-xs" style={{ color: d.phaseColor }}>
+            {d.phaseLabel} — J{d.cycleDay}
+          </p>
+        )}
+        {/* 6. Variation % */}
         {d.delta !== 0 && (
-          <p className={`text-xs ${d.delta > 0 ? "text-success" : "text-destructive"}`}>
+          <p className={`text-xs font-bold ${d.delta > 0 ? "text-success" : "text-destructive"}`}>
             {d.delta > 0 ? "+" : ""}{d.delta}%
           </p>
         )}
@@ -195,12 +252,12 @@ export default function AnalyticsPage() {
 
       {/* Progression Chart */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="glass-card rounded-2xl p-6">
-        <div className="mb-4 flex items-center justify-between">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
             <TrendingUp className="h-5 w-5 text-primary" /> Progression
           </h3>
           <Select value={selectedTestId} onValueChange={setSelectedTestId}>
-            <SelectTrigger className="w-64 border-border bg-secondary text-foreground">
+            <SelectTrigger className="w-full sm:w-64 border-border bg-secondary text-foreground">
               <SelectValue placeholder="Select test..." />
             </SelectTrigger>
             <SelectContent className="border-border bg-card">
@@ -211,10 +268,37 @@ export default function AnalyticsPage() {
           </Select>
         </div>
 
+        {/* Phase legend */}
+        {showCycle && chartData.some(d => d.phaseName) && (
+          <div className="mb-3 flex flex-wrap gap-3 text-xs">
+            {[
+              { label: "Menstrual", color: "hsl(0 84% 60%)" },
+              { label: "Follicular", color: "hsl(142 71% 45%)" },
+              { label: "Ovulatory", color: "hsl(38 92% 50%)" },
+              { label: "Luteal", color: "hsl(270 60% 55%)" },
+            ].map(p => (
+              <span key={p.label} className="flex items-center gap-1.5">
+                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
+                <span className="text-muted-foreground">{p.label}</span>
+              </span>
+            ))}
+          </div>
+        )}
+
         {chartData.length > 0 ? (
           <>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
+                {/* Phase background zones */}
+                {showCycle && phaseZones.map((zone, i) => (
+                  <ReferenceArea
+                    key={i}
+                    x1={zone.x1}
+                    x2={zone.x2}
+                    fill={PHASE_COLORS[zone.phase] || "transparent"}
+                    fillOpacity={1}
+                  />
+                ))}
                 <XAxis dataKey="date" stroke="hsl(0 0% 64%)" fontSize={12} />
                 <YAxis stroke="hsl(0 0% 64%)" fontSize={12} />
                 <Tooltip content={<CustomTooltip />} />
@@ -223,7 +307,10 @@ export default function AnalyticsPage() {
                   dataKey="value"
                   stroke="hsl(14 100% 60%)"
                   strokeWidth={3}
-                  dot={{ fill: "hsl(14 100% 60%)", r: 5 }}
+                  dot={({ cx, cy, payload }: any) => {
+                    const color = showCycle && payload.phaseColor ? payload.phaseColor : "hsl(14 100% 60%)";
+                    return <circle cx={cx} cy={cy} r={5} fill={color} stroke="hsl(14 100% 60%)" strokeWidth={2} />;
+                  }}
                   activeDot={{ r: 7 }}
                 />
               </LineChart>

@@ -124,6 +124,7 @@ export type Database = {
       results: {
         Row: {
           created_at: string | null
+          cycle_day: number | null
           id: string
           menstrual_phase: string | null
           notes: string | null
@@ -133,12 +134,14 @@ export type Database = {
           test_id: string
           value: number
           wellness_fatigue: number | null
+          wellness_period_pain: number | null
           wellness_score: number | null
           wellness_sleep: number | null
           wellness_soreness: number | null
         }
         Insert: {
           created_at?: string | null
+          cycle_day?: number | null
           id?: string
           menstrual_phase?: string | null
           notes?: string | null
@@ -148,12 +151,14 @@ export type Database = {
           test_id: string
           value: number
           wellness_fatigue?: number | null
+          wellness_period_pain?: number | null
           wellness_score?: number | null
           wellness_sleep?: number | null
           wellness_soreness?: number | null
         }
         Update: {
           created_at?: string | null
+          cycle_day?: number | null
           id?: string
           menstrual_phase?: string | null
           notes?: string | null
@@ -163,6 +168,7 @@ export type Database = {
           test_id?: string
           value?: number
           wellness_fatigue?: number | null
+          wellness_period_pain?: number | null
           wellness_score?: number | null
           wellness_sleep?: number | null
           wellness_soreness?: number | null
