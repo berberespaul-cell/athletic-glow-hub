@@ -96,3 +96,11 @@ export function isStrengthTest(family: string): boolean {
 export function isStreetlifting(family: string): boolean {
   return family === 'streetlifting';
 }
+
+// ── CYCLE DAY → PHASE CALCULATION ────────────────────
+export function cycleDayToPhase(day: number): { phase: string; label: string; color: string } {
+  if (day >= 1 && day <= 5) return { phase: "menstruation", label: "Menstrual Phase", color: "hsl(0 84% 60%)" };
+  if (day >= 6 && day <= 12) return { phase: "follicular", label: "Follicular Phase", color: "hsl(142 71% 45%)" };
+  if (day >= 13 && day <= 15) return { phase: "ovulation", label: "Ovulatory Phase", color: "hsl(38 92% 50%)" };
+  return { phase: "luteal", label: "Luteal Phase", color: "hsl(270 60% 55%)" };
+}
