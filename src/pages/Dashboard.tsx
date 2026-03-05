@@ -2,7 +2,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
-import { progressionDelta, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, isStreetlifting, streetliftingRelativeStrength } from "@/lib/calculations";
+import { progressionDelta, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, isStreetlifting, streetliftingRelativeStrength, cycleDayToPhase } from "@/lib/calculations";
 import { FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
 import { Activity, TrendingUp, TrendingDown, Minus, Target } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -48,6 +48,7 @@ export default function Dashboard() {
     latestReps: number | null;
     wellnessScore: number | null;
     menstrualPhase: string | null;
+    cycleDay: number | null;
   };
 
   const summaryByTest = new Map<string, TestSummary>();
@@ -83,6 +84,7 @@ export default function Dashboard() {
         latestReps: latest.reps ?? null,
         wellnessScore: latest.wellness_score ? Number(latest.wellness_score) : null,
         menstrualPhase: (latest as any).menstrual_phase || null,
+        cycleDay: (latest as any).cycle_day ?? null,
       });
     });
   }
@@ -201,19 +203,27 @@ export default function Dashboard() {
                               <span className="cursor-help">😴 {s.wellnessScore.toFixed(1)}</span>
                             </TooltipTrigger>
                             <TooltipContent>
-                              Wellness: {s.wellnessScore.toFixed(1)}/6
-                              {s.menstrualPhase && ` • ${s.menstrualPhase}`}
+                              <p>Wellness: {s.wellnessScore.toFixed(1)}/6</p>
+                              {s.cycleDay && (() => {
+                                const phase = cycleDayToPhase(s.cycleDay);
+                                return <p style={{ color: phase.color }}>{phase.label} — J{s.cycleDay}</p>;
+                              })()}
                             </TooltipContent>
                           </Tooltip>
                         )}
-                        {!s.wellnessScore && s.menstrualPhase && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help">🔴</span>
-                            </TooltipTrigger>
-                            <TooltipContent>Phase: {s.menstrualPhase}</TooltipContent>
-                          </Tooltip>
-                        )}
+                        {!s.wellnessScore && s.cycleDay && (() => {
+                          const phase = cycleDayToPhase(s.cycleDay);
+                          return (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className="cursor-help" style={{ color: phase.color }}>●</span>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p style={{ color: phase.color }}>{phase.label} — J{s.cycleDay}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          );
+                        })()}
                       </div>
                     </div>
                     <div className="flex items-center gap-4 text-right">
