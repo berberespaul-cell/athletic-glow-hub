@@ -4,11 +4,30 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { progressionDelta, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, isStreetlifting, streetliftingRelativeStrength, cycleDayToPhase } from "@/lib/calculations";
 import { FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
-import { Activity, TrendingUp, TrendingDown, Minus, Target } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, Minus, Target, ChevronRight } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
+import { useState } from "react";
+import TestDetailView from "@/components/TestDetailView";
+
+type TestSummary = {
+  testId: string;
+  name: string;
+  family: string;
+  unit: string;
+  latest: number;
+  latestDate: string;
+  pb: number;
+  isPB: boolean;
+  trend: number | null;
+  latestReps: number | null;
+  wellnessScore: number | null;
+  menstrualPhase: string | null;
+  cycleDay: number | null;
+};
 
 export default function Dashboard() {
   const { profileId, role } = useAuth();
+  const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
 
   const { data: allResults } = useQuery({
     queryKey: ["all-results-dash", profileId],
@@ -34,23 +53,18 @@ export default function Dashboard() {
     enabled: !!profileId,
   });
 
-  // Build categorized summary
-  type TestSummary = {
-    testId: string;
-    name: string;
-    family: string;
-    unit: string;
-    latest: number;
-    latestDate: string;
-    pb: number;
-    isPB: boolean;
-    trend: number | null;
-    latestReps: number | null;
-    wellnessScore: number | null;
-    menstrualPhase: string | null;
-    cycleDay: number | null;
-  };
+  // If a test is selected, show the detail view
+  if (selectedTest) {
+    return (
+      <TestDetailView
+        testId={selectedTest.id}
+        testName={selectedTest.name}
+        onBack={() => setSelectedTest(null)}
+      />
+    );
+  }
 
+  // Build categorized summary
   const summaryByTest = new Map<string, TestSummary>();
 
   if (allResults) {
@@ -89,7 +103,6 @@ export default function Dashboard() {
     });
   }
 
-  // Group summaries by family
   const summariesByFamily: Partial<Record<TestFamily, TestSummary[]>> = {};
   summaryByTest.forEach(s => {
     const fam = s.family as TestFamily;
@@ -163,7 +176,7 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Categorized Summary */}
+        {/* Categorized Summary — clickable cards */}
         {FAMILY_ORDER.filter(f => summariesByFamily[f]?.length).map((family, fi) => (
           <motion.div
             key={family}
@@ -184,9 +197,10 @@ export default function Dashboard() {
                   : null;
 
                 return (
-                  <div
+                  <button
                     key={s.testId}
-                    className="flex items-center justify-between rounded-xl bg-secondary/50 px-4 py-3"
+                    onClick={() => setSelectedTest({ id: s.testId, name: s.name })}
+                    className="flex w-full items-center justify-between rounded-xl bg-secondary/50 px-4 py-3 text-left transition-colors hover:bg-secondary"
                   >
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-medium text-foreground">{s.name}</p>
@@ -196,7 +210,6 @@ export default function Dashboard() {
                         {isStreet && streetRS && (
                           <span className="text-primary/80">• {streetRS}x BW</span>
                         )}
-                        {/* Contextual wellness icon */}
                         {s.wellnessScore !== null && (
                           <Tooltip>
                             <TooltipTrigger asChild>
@@ -226,7 +239,7 @@ export default function Dashboard() {
                         })()}
                       </div>
                     </div>
-                    <div className="flex items-center gap-4 text-right">
+                    <div className="flex items-center gap-3 text-right">
                       <div>
                         <p className="text-lg font-bold text-primary">
                           {s.latest} {s.unit}
@@ -243,8 +256,9 @@ export default function Dashboard() {
                           </span>
                         )}
                       </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>

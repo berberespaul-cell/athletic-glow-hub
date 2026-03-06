@@ -9,7 +9,7 @@ import AppLayout from "@/components/AppLayout";
 import AuthPage from "@/pages/AuthPage";
 import Dashboard from "@/pages/Dashboard";
 import TestEntry from "@/pages/TestEntry";
-import AnalyticsPage from "@/pages/AnalyticsPage";
+
 import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "./pages/NotFound";
 
@@ -37,14 +37,6 @@ const App = () => (
               element={
                 <ProtectedRoute>
                   <AppLayout><TestEntry /></AppLayout>
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/analytics"
-              element={
-                <ProtectedRoute>
-                  <AppLayout><AnalyticsPage /></AppLayout>
                 </ProtectedRoute>
               }
             />
