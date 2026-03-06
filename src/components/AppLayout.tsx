@@ -8,7 +8,6 @@ import { useIsMobile } from "@/hooks/use-mobile";
 const navItems = [
   { to: "/", icon: LayoutDashboard, label: "Dashboard" },
   { to: "/test-entry", icon: ClipboardList, label: "Test Entry" },
-  { to: "/analytics", icon: BarChart3, label: "Analytics" },
   { to: "/profile", icon: Settings, label: "Profile" },
 ];
 
