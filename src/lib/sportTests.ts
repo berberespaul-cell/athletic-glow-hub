@@ -111,9 +111,8 @@ export const SPORT_TEST_BUNDLES: Record<string, string[]> = {
   ],
 };
 
-export function getTestsForSport(sport: SportType): TestDefinition[] {
-  if (sport === 'hybrid') return TEST_LIBRARY;
-  return TEST_LIBRARY.filter(t => t.sports.includes(sport));
+export function getTestsForSport(_sport: SportType): TestDefinition[] {
+  return TEST_LIBRARY;
 }
 
 export function getRecommendedTestNames(sport: SportType): string[] {
