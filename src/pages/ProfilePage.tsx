@@ -11,6 +11,7 @@ import { motion } from "framer-motion";
 import { getTestsForSport, getRecommendedTestNames, FAMILY_LABELS, FAMILY_ORDER, type SportType, type TestFamily } from "@/lib/sportTests";
 import { Save, User, Weight, Plus } from "lucide-react";
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
+import { SportBadge } from "@/components/SportBadge";
 
 const SPORTS: SportType[] = ["rugby", "basketball", "volleyball", "hybrid"];
 
@@ -138,7 +139,10 @@ export default function ProfilePage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Profile & Settings</h1>
+        <div className="flex items-center gap-3">
+          <h1 className="text-3xl font-bold text-foreground">Profile & Settings</h1>
+          <SportBadge />
+        </div>
         <p className="mt-1 text-muted-foreground">Manage your athlete profile and sport selection</p>
       </div>
 
