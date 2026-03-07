@@ -8,6 +8,7 @@ import { Activity, TrendingUp, TrendingDown, Minus, Target, ChevronRight } from 
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
+import { SportBadge, SportWatermark } from "@/components/SportBadge";
 
 type TestSummary = {
   testId: string;
@@ -138,9 +139,12 @@ export default function Dashboard() {
     <TooltipProvider>
       <div className="space-y-8">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">
-            Welcome back{profile?.name ? `, ${profile.name}` : ""}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-foreground">
+              Welcome back{profile?.name ? `, ${profile.name}` : ""}
+            </h1>
+            <SportBadge />
+          </div>
           <p className="mt-1 text-muted-foreground">
             {role === "coach" ? "Your team at a glance" : "Your performance overview"}
           </p>
@@ -183,8 +187,9 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 * fi }}
-            className="glass-card rounded-2xl p-6"
+            className="glass-card relative overflow-hidden rounded-2xl p-6"
           >
+            <SportWatermark />
             <h2 className="mb-4 text-lg font-semibold capitalize text-foreground">
               {FAMILY_LABELS[family]}
             </h2>
