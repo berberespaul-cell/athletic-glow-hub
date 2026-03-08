@@ -13,8 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Calendar, CheckCircle2, Dumbbell, ChevronDown, Library, Star, Plus } from "lucide-react";
+import { Calendar, CheckCircle2, Dumbbell, ChevronDown, Library, Star, Plus, Info } from "lucide-react";
 import CreateCustomTestDialog from "@/components/CreateCustomTestDialog";
+import TestInfoModal, { TestInfoButton } from "@/components/TestInfoModal";
 
 export default function TestEntry() {
   const { profileId } = useAuth();
@@ -33,6 +34,7 @@ export default function TestEntry() {
   const [submitted, setSubmitted] = useState(false);
   const [showAllTests, setShowAllTests] = useState(false);
   const [showCreateTest, setShowCreateTest] = useState(false);
+  const [showTestInfo, setShowTestInfo] = useState(false);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", profileId],
@@ -304,6 +306,12 @@ export default function TestEntry() {
                 className="text-xs text-primary hover:text-primary/80">
                 <Plus className="mr-1 h-3 w-3" /> Create Custom Test
               </Button>
+              {selectedTest && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShowTestInfo(true)}
+                  className="text-xs text-primary hover:text-primary/80">
+                  <Info className="mr-1 h-3 w-3" /> Test Info
+                </Button>
+              )}
             </div>
 
             {selectedTest?.description && (
@@ -460,6 +468,13 @@ export default function TestEntry() {
       </form>
 
       <CreateCustomTestDialog open={showCreateTest} onOpenChange={setShowCreateTest} />
+      {selectedTest && (
+        <TestInfoModal
+          test={{ name: selectedTest.name, family: selectedTest.family, unit: selectedTest.unit, description: selectedTest.description }}
+          open={showTestInfo}
+          onOpenChange={setShowTestInfo}
+        />
+      )}
     </div>
   );
 }

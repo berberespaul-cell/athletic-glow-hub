@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
 import { SportBadge } from "@/components/SportBadge";
+import TestInfoModal, { TestInfoButton } from "@/components/TestInfoModal";
 
 type TestSummary = {
   testId: string;
@@ -29,6 +30,7 @@ type TestSummary = {
 export default function Dashboard() {
   const { profileId, role } = useAuth();
   const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
+  const [infoTest, setInfoTest] = useState<any>(null);
 
   const { data: allResults } = useQuery({
     queryKey: ["all-results-dash", profileId],
@@ -36,7 +38,7 @@ export default function Dashboard() {
       if (!profileId) return [];
       const { data } = await supabase
         .from("results")
-        .select("*, test_library(name, family, unit)")
+        .select("*, test_library(name, family, unit, description)")
         .eq("profile_id", profileId)
         .order("session_date", { ascending: false });
       return data || [];
@@ -207,7 +209,13 @@ export default function Dashboard() {
                     className="flex w-full items-center justify-between rounded-xl bg-secondary/50 px-4 py-3 text-left transition-colors hover:bg-secondary"
                   >
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-foreground">{s.name}</p>
+                      <p className="flex items-center gap-1.5 truncate font-medium text-foreground">
+                        {s.name}
+                        <TestInfoButton onClick={() => {
+                          const test = allResults?.find((r: any) => r.test_id === s.testId) as any;
+                          setInfoTest({ name: s.name, family: s.family, unit: s.unit, description: test?.test_library?.description });
+                        }} />
+                      </p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{s.latestDate}</span>
                         {rmLabel && <span className="text-primary/80">• {rmLabel}</span>}
@@ -282,6 +290,7 @@ export default function Dashboard() {
             </div>
           </motion.div>
         )}
+        <TestInfoModal test={infoTest} open={!!infoTest} onOpenChange={(open) => !open && setInfoTest(null)} />
       </div>
     </TooltipProvider>
   );

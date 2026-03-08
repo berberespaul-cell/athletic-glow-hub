@@ -13,6 +13,7 @@ import CoachFocusSelector from "@/components/CoachFocusSelector";
 import { SportBadge } from "@/components/SportBadge";
 import TeamPerformanceRankings from "@/components/TeamPerformanceRankings";
 import TeamWellnessChart from "@/components/TeamWellnessChart";
+import TestInfoModal, { TestInfoButton } from "@/components/TestInfoModal";
 
 type TestSummary = {
   testId: string;
@@ -35,6 +36,7 @@ export default function CoachDashboard() {
   const { focus, setAthleteFocus } = useCoachFocus();
   const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
   const [rankingTestId, setRankingTestId] = useState<string | null>(null);
+  const [infoTest, setInfoTest] = useState<any>(null);
 
   // Get team stats
   const { data: teams } = useQuery({
@@ -61,7 +63,7 @@ export default function CoachDashboard() {
     queryFn: async () => {
       const { data } = await supabase
         .from("results")
-        .select("*, test_library(name, family, unit)")
+        .select("*, test_library(name, family, unit, description)")
         .eq("profile_id", focus.athleteProfileId!)
         .order("session_date", { ascending: false });
       return data || [];
@@ -94,7 +96,7 @@ export default function CoachDashboard() {
       if (!teamMemberIds?.length) return [];
       const { data } = await supabase
         .from("results")
-        .select("*, test_library(name, family, unit), profiles(name)")
+        .select("*, test_library(name, family, unit, description), profiles(name)")
         .in("profile_id", teamMemberIds)
         .order("session_date", { ascending: false });
       return data || [];
@@ -235,7 +237,13 @@ export default function CoachDashboard() {
                       <button key={s.testId} onClick={() => setSelectedTest({ id: s.testId, name: s.name })}
                         className="flex w-full items-center justify-between rounded-xl bg-secondary/50 px-4 py-3 text-left transition-colors hover:bg-secondary">
                         <div className="min-w-0 flex-1">
-                          <p className="truncate font-medium text-foreground">{s.name}</p>
+                          <p className="flex items-center gap-1.5 truncate font-medium text-foreground">
+                            {s.name}
+                            <TestInfoButton onClick={() => {
+                              const test = (athleteResults as any)?.find((r: any) => r.test_id === s.testId);
+                              setInfoTest({ name: s.name, family: s.family, unit: s.unit, description: test?.test_library?.description });
+                            }} />
+                          </p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <span>{s.latestDate}</span>
                             {isStreet && streetRS && <span className="text-primary/80">• {streetRS}x BW</span>}
@@ -294,6 +302,7 @@ export default function CoachDashboard() {
             />
           </>
         )}
+        <TestInfoModal test={infoTest} open={!!infoTest} onOpenChange={(open) => !open && setInfoTest(null)} />
       </div>
     </TooltipProvider>
   );

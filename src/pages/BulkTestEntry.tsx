@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Save, Users, AlertCircle } from "lucide-react";
+import { Save, Users, AlertCircle, Info } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getRecommendedTestNames, FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
 import CoachFocusSelector from "@/components/CoachFocusSelector";
+import TestInfoModal from "@/components/TestInfoModal";
 
 interface AthleteRow {
   profileId: string;
@@ -35,6 +36,7 @@ export default function BulkTestEntry() {
   const [selectedTestId, setSelectedTestId] = useState("");
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split("T")[0]);
   const [rows, setRows] = useState<AthleteRow[]>([]);
+  const [showTestInfo, setShowTestInfo] = useState(false);
 
   // Get team members for selected team
   const { data: teamMembers } = useQuery({
@@ -181,7 +183,12 @@ export default function BulkTestEntry() {
       {selectedTest && rows.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6">
           <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Users className="h-5 w-5 text-primary" /> {selectedTest.name} — Team Table
+            <Users className="h-5 w-5 text-primary" /> {selectedTest.name}
+            <button onClick={() => setShowTestInfo(true)}
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-primary/40 text-primary/60 transition-colors hover:bg-primary hover:text-primary-foreground">
+              <Info className="h-3 w-3" />
+            </button>
+            — Team Table
           </h3>
 
           <div className="overflow-x-auto">
@@ -299,6 +306,13 @@ export default function BulkTestEntry() {
             </Button>
           </div>
         </motion.div>
+      )}
+      {selectedTest && (
+        <TestInfoModal
+          test={{ name: selectedTest.name, family: selectedTest.family, unit: selectedTest.unit, description: selectedTest.description }}
+          open={showTestInfo}
+          onOpenChange={setShowTestInfo}
+        />
       )}
     </div>
   );
