@@ -103,13 +103,10 @@ export default function TeamManagement() {
       const { data: codeData } = await supabase.rpc("generate_invite_code");
       const inviteCode = codeData as string;
 
-      // Create a profile for this athlete (coach-managed)
-      // Use a random UUID as user_id since athlete hasn't claimed yet
-      const randomUserId = crypto.randomUUID();
+      // Create a profile for this athlete (coach-managed, no user_id yet)
       const { data: profileData, error: profileError } = await supabase
         .from("profiles")
         .insert({
-          user_id: randomUserId,
           name: fullName,
           sport: team?.sport || "hybrid",
           sex: athleteSex || null,
