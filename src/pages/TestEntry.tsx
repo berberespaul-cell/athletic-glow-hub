@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Calendar, CheckCircle2, Dumbbell, ChevronDown, Library, Star } from "lucide-react";
+import { Calendar, CheckCircle2, Dumbbell, ChevronDown, Library, Star, Plus } from "lucide-react";
+import CreateCustomTestDialog from "@/components/CreateCustomTestDialog";
 
 export default function TestEntry() {
   const { profileId } = useAuth();
