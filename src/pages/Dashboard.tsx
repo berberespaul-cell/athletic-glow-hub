@@ -9,7 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
 import { SportBadge } from "@/components/SportBadge";
-import TestInfoModal, { TestInfoButton } from "@/components/TestInfoModal";
+
 
 type TestSummary = {
   testId: string;
