@@ -36,6 +36,7 @@ export default function BulkTestEntry() {
   const [selectedTestId, setSelectedTestId] = useState("");
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split("T")[0]);
   const [rows, setRows] = useState<AthleteRow[]>([]);
+  const [showTestInfo, setShowTestInfo] = useState(false);
 
   // Get team members for selected team
   const { data: teamMembers } = useQuery({
