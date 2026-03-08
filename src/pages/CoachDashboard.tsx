@@ -7,7 +7,7 @@ import { progressionDelta, isLowerBetter, isStreetlifting, streetliftingRelative
 import { FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
 import { Activity, TrendingUp, TrendingDown, Minus, ChevronRight, Users } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import TestDetailView from "@/components/TestDetailView";
 import CoachFocusSelector from "@/components/CoachFocusSelector";
 import { SportBadge } from "@/components/SportBadge";
