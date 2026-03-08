@@ -30,6 +30,7 @@ type TestSummary = {
 export default function Dashboard() {
   const { profileId, role } = useAuth();
   const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
+  const [infoTest, setInfoTest] = useState<any>(null);
 
   const { data: allResults } = useQuery({
     queryKey: ["all-results-dash", profileId],
