@@ -140,19 +140,71 @@ export default function Dashboard() {
     return `Est. 1RM (${s.latestReps}r)`;
   };
 
+  const handleExportPDF = async () => {
+    if (!profile || !allResults) return;
+    setExporting(true);
+    try {
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+      const recentResults = allResults.filter(r => new Date(r.session_date) >= sevenDaysAgo && r.wellness_score);
+      let wellnessAvg: AthleteReportData["wellnessAvg"] = null;
+      if (recentResults.length > 0) {
+        const avgField = (field: string) => {
+          const vals = recentResults.map(r => Number((r as any)[field])).filter(v => v > 0);
+          return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
+        };
+        wellnessAvg = {
+          sleep: avgField("wellness_sleep"),
+          soreness: avgField("wellness_soreness"),
+          fatigue: avgField("wellness_fatigue"),
+          overall: recentResults.reduce((a, r) => a + Number(r.wellness_score), 0) / recentResults.length,
+        };
+      }
+      const topRecords: AthleteReportData["topRecords"] = [];
+      summaryByTest.forEach(s => {
+        topRecords.push({ name: s.name, value: s.pb, unit: s.unit, date: s.latestDate });
+      });
+      topRecords.sort((a, b) => b.value - a.value);
+
+      exportAthleteReport({
+        name: profile.name,
+        sport: profile.sport,
+        weight: profile.weight_kg ? Number(profile.weight_kg) : null,
+        wellnessAvg,
+        topRecords: topRecords.slice(0, 5),
+        chartImageBase64: null,
+        chartTitle: "Overview",
+      });
+      toast({ title: "PDF exported!", description: "Your performance report has been downloaded." });
+    } catch (err: any) {
+      toast({ title: "Export failed", description: err.message, variant: "destructive" });
+    } finally {
+      setExporting(false);
+    }
+  };
+
   return (
     <TooltipProvider>
       <div className="space-y-8">
-        <div>
-          <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold text-foreground">
-              Welcome back{profile?.name ? `, ${profile.name}` : ""}
-            </h1>
-            <SportBadge />
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-foreground">
+                Welcome back{profile?.name ? `, ${profile.name}` : ""}
+              </h1>
+              <SportBadge />
+            </div>
+            <p className="mt-1 text-muted-foreground">
+              {role === "coach" ? "Your team at a glance" : "Your performance overview"}
+            </p>
           </div>
-          <p className="mt-1 text-muted-foreground">
-            {role === "coach" ? "Your team at a glance" : "Your performance overview"}
-          </p>
+          {role !== "coach" && summaryByTest.size > 0 && (
+            <Button onClick={handleExportPDF} disabled={exporting} variant="outline" className="border-primary/30 text-primary hover:bg-primary/10">
+              <FileDown className="mr-2 h-4 w-4" />
+              {exporting ? "Exporting..." : "Export Report"}
+            </Button>
+          )}
+        </div>
         </div>
 
         {/* Jump Ratio Cards */}
