@@ -468,6 +468,13 @@ export default function TestEntry() {
       </form>
 
       <CreateCustomTestDialog open={showCreateTest} onOpenChange={setShowCreateTest} />
+      {selectedTest && (
+        <TestInfoModal
+          test={{ name: selectedTest.name, family: selectedTest.family, unit: selectedTest.unit, description: selectedTest.description }}
+          open={showTestInfo}
+          onOpenChange={setShowTestInfo}
+        />
+      )}
     </div>
   );
 }
