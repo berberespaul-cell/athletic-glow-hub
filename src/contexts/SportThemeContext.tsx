@@ -13,34 +13,37 @@ interface SportThemeConfig {
   accentGlow: string;
 }
 
+const ORANGE_ACCENT = "14 100% 60%";  // Unified orange for all sports
+const ORANGE_GLOW = "14 80% 50%";
+
 const SPORT_THEMES: Record<SportType, SportThemeConfig> = {
   basketball: {
     sport: "basketball",
     label: "Basketball",
-    badge: "Elite Basketball Program",
-    accent: "15 75% 55%",       // Terracotta/Orange
-    accentGlow: "25 80% 50%",
+    badge: "Basketball Performance",
+    accent: ORANGE_ACCENT,
+    accentGlow: ORANGE_GLOW,
   },
   volleyball: {
     sport: "volleyball",
     label: "Volleyball",
     badge: "Volleyball Performance",
-    accent: "210 70% 50%",      // Deep Sky Blue / Royal Blue
-    accentGlow: "220 75% 55%",
+    accent: ORANGE_ACCENT,
+    accentGlow: ORANGE_GLOW,
   },
   rugby: {
     sport: "rugby",
     label: "Rugby",
-    badge: "Rugby Union Tracking",
-    accent: "150 40% 35%",      // Dark Forest Green
-    accentGlow: "155 45% 40%",
+    badge: "Rugby Performance",
+    accent: ORANGE_ACCENT,
+    accentGlow: ORANGE_GLOW,
   },
   hybrid: {
     sport: "hybrid",
     label: "Hybrid",
-    badge: "Multi-Sport Tracking",
-    accent: "220 10% 45%",      // Slate Grey
-    accentGlow: "220 12% 50%",
+    badge: "Hybrid Performance",
+    accent: ORANGE_ACCENT,
+    accentGlow: ORANGE_GLOW,
   },
 };
 

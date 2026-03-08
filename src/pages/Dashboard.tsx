@@ -8,7 +8,7 @@ import { Activity, TrendingUp, TrendingDown, Minus, Target, ChevronRight } from 
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
-import { SportBadge, SportWatermark } from "@/components/SportBadge";
+import { SportBadge } from "@/components/SportBadge";
 
 type TestSummary = {
   testId: string;
@@ -187,9 +187,8 @@ export default function Dashboard() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.05 * fi }}
-            className="glass-card relative overflow-hidden rounded-2xl p-6"
+            className="glass-card rounded-2xl p-6"
           >
-            <SportWatermark />
             <h2 className="mb-4 text-lg font-semibold capitalize text-foreground">
               {FAMILY_LABELS[family]}
             </h2>
