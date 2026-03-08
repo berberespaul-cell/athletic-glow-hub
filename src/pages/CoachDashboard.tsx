@@ -78,6 +78,47 @@ export default function CoachDashboard() {
     enabled: focus.mode === "athlete" && !!focus.athleteProfileId,
   });
 
+  // Fetch team member IDs then all their results for team analytics
+  const { data: teamMemberIds } = useQuery({
+    queryKey: ["team-member-ids", focus.teamId],
+    queryFn: async () => {
+      const { data } = await supabase.from("team_members").select("profile_id").eq("team_id", focus.teamId!);
+      return data?.map(d => d.profile_id) || [];
+    },
+    enabled: focus.mode === "team" && !!focus.teamId,
+  });
+
+  const { data: teamResults } = useQuery({
+    queryKey: ["team-results", focus.teamId, teamMemberIds],
+    queryFn: async () => {
+      if (!teamMemberIds?.length) return [];
+      const { data } = await supabase
+        .from("results")
+        .select("*, test_library(name, family, unit), profiles(name)")
+        .in("profile_id", teamMemberIds)
+        .order("session_date", { ascending: false });
+      return data || [];
+    },
+    enabled: focus.mode === "team" && !!teamMemberIds?.length,
+  });
+
+  // Derive unique tests from team results
+  const teamTests = useMemo(() => {
+    if (!teamResults?.length) return [];
+    const seen = new Map<string, { id: string; name: string; unit: string; family: string }>();
+    teamResults.forEach((r: any) => {
+      if (r.test_library && !seen.has(r.test_id)) {
+        seen.set(r.test_id, { id: r.test_id, name: r.test_library.name, unit: r.test_library.unit, family: r.test_library.family });
+      }
+    });
+    return Array.from(seen.values());
+  }, [teamResults]);
+
+  const handleTeamAthleteClick = (profileId: string, name: string) => {
+    const { setAthleteFocus } = require("@/contexts/CoachFocusContext");
+    // We can't use the hook here, so we'll use the focus context from the component
+  };
+
   if (selectedTest && focus.mode === "athlete" && focus.athleteProfileId) {
     return (
       <TestDetailView
