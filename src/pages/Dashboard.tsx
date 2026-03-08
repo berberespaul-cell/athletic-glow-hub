@@ -35,65 +35,6 @@ export default function Dashboard() {
   const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
   const [exporting, setExporting] = useState(false);
 
-  const handleExportPDF = useCallback(async () => {
-    if (!profile || !allResults) return;
-    setExporting(true);
-    try {
-      // Wellness average from last 7 days
-      const sevenDaysAgo = new Date();
-      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-      const recentResults = allResults.filter(r => new Date(r.session_date) >= sevenDaysAgo && r.wellness_score);
-      let wellnessAvg: AthleteReportData["wellnessAvg"] = null;
-      if (recentResults.length > 0) {
-        const avgField = (field: string) => {
-          const vals = recentResults.map(r => Number((r as any)[field])).filter(v => v > 0);
-          return vals.length ? vals.reduce((a, b) => a + b, 0) / vals.length : 0;
-        };
-        wellnessAvg = {
-          sleep: avgField("wellness_sleep"),
-          soreness: avgField("wellness_soreness"),
-          fatigue: avgField("wellness_fatigue"),
-          overall: recentResults.reduce((a, r) => a + Number(r.wellness_score), 0) / recentResults.length,
-        };
-      }
-
-      // Top 5 PBs
-      const topRecords: AthleteReportData["topRecords"] = [];
-      summaryByTest.forEach(s => {
-        topRecords.push({ name: s.name, value: s.pb, unit: s.unit, date: s.latestDate });
-      });
-      topRecords.sort((a, b) => b.value - a.value);
-      const top5 = topRecords.slice(0, 5);
-
-      // Try to capture chart as base64
-      let chartImageBase64: string | null = null;
-      const chartEl = document.querySelector(".recharts-responsive-container");
-      if (chartEl) {
-        try {
-          const { default: html2canvas } = await import("html2canvas");
-          const canvas = await html2canvas(chartEl as HTMLElement, { backgroundColor: "#1e1e23" });
-          chartImageBase64 = canvas.toDataURL("image/png");
-        } catch { /* no chart capture */ }
-      }
-
-      exportAthleteReport({
-        name: profile.name,
-        sport: profile.sport,
-        weight: profile.weight_kg ? Number(profile.weight_kg) : null,
-        wellnessAvg,
-        topRecords: top5,
-        chartImageBase64,
-        chartTitle: "Overview",
-      });
-      toast({ title: "PDF exported!", description: "Your performance report has been downloaded." });
-    } catch (err: any) {
-      toast({ title: "Export failed", description: err.message, variant: "destructive" });
-    } finally {
-      setExporting(false);
-    }
-  }, [profile, allResults, summaryByTest]);
-  
-
   const { data: allResults } = useQuery({
     queryKey: ["all-results-dash", profileId],
     queryFn: async () => {
