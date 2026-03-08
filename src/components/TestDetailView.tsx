@@ -100,20 +100,6 @@ export default function TestDetailView({ testId, testName, onBack, overrideProfi
     };
   });
 
-  // Phase background zones
-  const phaseZones: { x1: string; x2: string; phase: string }[] = [];
-  if (showCycle && chartData.length > 0) {
-    let currentPhase = chartData[0].phaseName;
-    let zoneStart = chartData[0].date;
-    for (let i = 1; i < chartData.length; i++) {
-      if (chartData[i].phaseName !== currentPhase) {
-        if (currentPhase) phaseZones.push({ x1: zoneStart, x2: chartData[i - 1].date, phase: currentPhase });
-        currentPhase = chartData[i].phaseName;
-        zoneStart = chartData[i].date;
-      }
-    }
-    if (currentPhase) phaseZones.push({ x1: zoneStart, x2: chartData[chartData.length - 1].date, phase: currentPhase });
-  }
 
   const cv = (results?.length || 0) >= 2 ? coefficientOfVariation(results!.map((r) => Number(r.value))) : null;
 
