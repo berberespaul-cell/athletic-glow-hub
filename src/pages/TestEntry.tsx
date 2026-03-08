@@ -32,6 +32,7 @@ export default function TestEntry() {
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [showAllTests, setShowAllTests] = useState(false);
+  const [showCreateTest, setShowCreateTest] = useState(false);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", profileId],
