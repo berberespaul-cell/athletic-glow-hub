@@ -205,7 +205,6 @@ export default function Dashboard() {
             </Button>
           )}
         </div>
-        </div>
 
         {/* Jump Ratio Cards */}
         {(cmjSj !== null || cmjAbal !== null) && (
