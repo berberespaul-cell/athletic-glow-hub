@@ -1,0 +1,305 @@
+import { useState, useMemo } from "react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCoachFocus } from "@/contexts/CoachFocusContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { toast } from "@/hooks/use-toast";
+import { motion } from "framer-motion";
+import { Save, Users, AlertCircle } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { getRecommendedTestNames, FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
+import CoachFocusSelector from "@/components/CoachFocusSelector";
+
+interface AthleteRow {
+  profileId: string;
+  name: string;
+  sex: string;
+  present: boolean;
+  value: string;
+  reps: string;
+  sleep: number;
+  soreness: number;
+  fatigue: number;
+  periodPain: number;
+}
+
+export default function BulkTestEntry() {
+  const { user } = useAuth();
+  const { focus } = useCoachFocus();
+  const queryClient = useQueryClient();
+  const [selectedTestId, setSelectedTestId] = useState("");
+  const [sessionDate, setSessionDate] = useState(new Date().toISOString().split("T")[0]);
+  const [rows, setRows] = useState<AthleteRow[]>([]);
+
+  // Get team members for selected team
+  const { data: teamMembers } = useQuery({
+    queryKey: ["team-members-bulk", focus.teamId],
+    queryFn: async () => {
+      if (!focus.teamId) return [];
+      const { data } = await supabase
+        .from("team_members")
+        .select("profile_id, profiles(id, name, sex)")
+        .eq("team_id", focus.teamId);
+      return data || [];
+    },
+    enabled: focus.mode === "team" && !!focus.teamId,
+  });
+
+  const { data: tests } = useQuery({
+    queryKey: ["tests"],
+    queryFn: async () => {
+      const { data } = await supabase.from("test_library").select("*");
+      return data || [];
+    },
+  });
+
+  // Initialize rows when team members change
+  useMemo(() => {
+    if (teamMembers?.length) {
+      setRows(teamMembers.map((m: any) => ({
+        profileId: m.profiles?.id || m.profile_id,
+        name: m.profiles?.name || "Unknown",
+        sex: m.profiles?.sex || "male",
+        present: true,
+        value: "",
+        reps: "",
+        sleep: 4,
+        soreness: 4,
+        fatigue: 4,
+        periodPain: 1,
+      })));
+    }
+  }, [teamMembers]);
+
+  const selectedTest = tests?.find(t => t.id === selectedTestId);
+  const isStrength = selectedTest && ["strength", "weightlifting", "streetlifting"].includes(selectedTest.family);
+
+  const updateRow = (index: number, field: keyof AthleteRow, value: any) => {
+    setRows(prev => prev.map((r, i) => i === index ? { ...r, [field]: value } : r));
+  };
+
+  // Group tests for selector
+  const groupByFamily = (testList: any[]) => {
+    const grouped: Partial<Record<TestFamily, any[]>> = {};
+    testList.forEach(t => {
+      const fam = t.family as TestFamily;
+      if (!grouped[fam]) grouped[fam] = [];
+      grouped[fam]!.push(t);
+    });
+    return grouped;
+  };
+  const allByFamily = groupByFamily(tests || []);
+
+  const saveMutation = useMutation({
+    mutationFn: async () => {
+      const presentRows = rows.filter(r => r.present && r.value);
+      if (presentRows.length === 0) throw new Error("No data to save");
+
+      const inserts = presentRows.map(r => ({
+        profile_id: r.profileId,
+        test_id: selectedTestId,
+        session_date: sessionDate,
+        value: Number(r.value),
+        reps: r.reps ? Number(r.reps) : null,
+        wellness_fatigue: r.fatigue,
+        wellness_sleep: r.sleep,
+        wellness_soreness: r.soreness,
+        ...(r.sex === "female" ? { wellness_period_pain: r.periodPain } : {}),
+      }));
+
+      const { error } = await supabase.from("results").insert(inserts as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["all-results"] });
+      toast({ title: "Session saved!", description: `${rows.filter(r => r.present && r.value).length} results recorded.` });
+      // Reset values
+      setRows(prev => prev.map(r => ({ ...r, value: "", reps: "", present: true, sleep: 4, soreness: 4, fatigue: 4, periodPain: 1 })));
+      setSelectedTestId("");
+    },
+    onError: (err: any) => toast({ title: "Error", description: err.message, variant: "destructive" }),
+  });
+
+  if (focus.mode !== "team") {
+    return (
+      <div className="space-y-6">
+        <h1 className="text-3xl font-bold text-foreground">Team Test Entry</h1>
+        <CoachFocusSelector />
+        <div className="glass-card rounded-2xl p-8 text-center">
+          <AlertCircle className="mx-auto mb-3 h-12 w-12 text-muted-foreground/30" />
+          <p className="text-muted-foreground">Select a team from the Focus Selector above to enter bulk test data.</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground">Team Test Entry</h1>
+        <p className="mt-1 text-muted-foreground">
+          Enter results for <span className="font-medium text-primary">{focus.teamName}</span>
+        </p>
+      </div>
+      <CoachFocusSelector />
+
+      <div className="flex flex-wrap items-end gap-4">
+        <div className="min-w-[250px] flex-1">
+          <Label className="text-muted-foreground">Test</Label>
+          <Select value={selectedTestId} onValueChange={setSelectedTestId}>
+            <SelectTrigger className="mt-1 border-border bg-secondary text-foreground">
+              <SelectValue placeholder="Choose a test..." />
+            </SelectTrigger>
+            <SelectContent className="max-h-80 border-border bg-card">
+              {FAMILY_ORDER.filter(f => allByFamily[f]?.length).map(family => (
+                <div key={family}>
+                  <div className="px-2 py-1 text-xs font-bold uppercase text-muted-foreground">
+                    {FAMILY_LABELS[family]}
+                  </div>
+                  {allByFamily[family]!.map((t: any) => (
+                    <SelectItem key={t.id} value={t.id} className="text-foreground">
+                      {t.name} ({t.unit})
+                    </SelectItem>
+                  ))}
+                </div>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-muted-foreground">Session Date</Label>
+          <Input type="date" value={sessionDate} onChange={e => setSessionDate(e.target.value)}
+            className="mt-1 border-border bg-secondary text-foreground" />
+        </div>
+      </div>
+
+      {selectedTest && rows.length > 0 && (
+        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6">
+          <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
+            <Users className="h-5 w-5 text-primary" /> {selectedTest.name} — Team Table
+          </h3>
+
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-12">Present</TableHead>
+                  <TableHead>Athlete</TableHead>
+                  <TableHead>Result ({selectedTest.unit})</TableHead>
+                  {isStrength && <TableHead>Reps</TableHead>}
+                  <TableHead>Sleep (1-6)</TableHead>
+                  <TableHead>Soreness (1-6)</TableHead>
+                  <TableHead>Fatigue (1-6)</TableHead>
+                  <TableHead>Period Pain</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rows.map((row, i) => (
+                  <TableRow key={row.profileId} className={!row.present ? "opacity-40" : ""}>
+                    <TableCell>
+                      <Switch
+                        checked={row.present}
+                        onCheckedChange={v => updateRow(i, "present", v)}
+                      />
+                    </TableCell>
+                    <TableCell className="font-medium text-foreground">{row.name}</TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        value={row.value}
+                        onChange={e => updateRow(i, "value", e.target.value)}
+                        disabled={!row.present}
+                        className="w-24 border-border bg-secondary text-foreground"
+                      />
+                    </TableCell>
+                    {isStrength && (
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min="1"
+                          value={row.reps}
+                          onChange={e => updateRow(i, "reps", e.target.value)}
+                          disabled={!row.present}
+                          className="w-20 border-border bg-secondary text-foreground"
+                          placeholder="1"
+                        />
+                      </TableCell>
+                    )}
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="6"
+                        value={row.sleep}
+                        onChange={e => updateRow(i, "sleep", Number(e.target.value))}
+                        disabled={!row.present}
+                        className="w-16 border-border bg-secondary text-foreground"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="6"
+                        value={row.soreness}
+                        onChange={e => updateRow(i, "soreness", Number(e.target.value))}
+                        disabled={!row.present}
+                        className="w-16 border-border bg-secondary text-foreground"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        min="1"
+                        max="6"
+                        value={row.fatigue}
+                        onChange={e => updateRow(i, "fatigue", Number(e.target.value))}
+                        disabled={!row.present}
+                        className="w-16 border-border bg-secondary text-foreground"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {row.sex === "female" ? (
+                        <Input
+                          type="number"
+                          min="1"
+                          max="6"
+                          value={row.periodPain}
+                          onChange={e => updateRow(i, "periodPain", Number(e.target.value))}
+                          disabled={!row.present}
+                          className="w-16 border-border bg-secondary text-foreground"
+                        />
+                      ) : (
+                        <span className="text-xs text-muted-foreground">N/A</span>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="mt-6 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              {rows.filter(r => r.present && r.value).length} / {rows.length} athletes with data
+            </p>
+            <Button
+              onClick={() => saveMutation.mutate()}
+              className="gradient-orange glow-orange text-primary-foreground"
+              disabled={saveMutation.isPending || !rows.some(r => r.present && r.value)}
+            >
+              <Save className="mr-2 h-4 w-4" />
+              {saveMutation.isPending ? "Saving..." : "Save Session"}
+            </Button>
+          </div>
+        </motion.div>
+      )}
+    </div>
+  );
+}
