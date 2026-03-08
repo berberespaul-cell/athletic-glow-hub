@@ -10,7 +10,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Save, Users, AlertCircle, Info } from "lucide-react";
+import { Save, Users, AlertCircle, Info, FileDown } from "lucide-react";
+import { exportTeamSessionReport } from "@/lib/pdfExport";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getRecommendedTestNames, FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
 import CoachFocusSelector from "@/components/CoachFocusSelector";
@@ -296,14 +297,38 @@ export default function BulkTestEntry() {
             <p className="text-sm text-muted-foreground">
               {rows.filter(r => r.present && r.value).length} / {rows.length} athletes with data
             </p>
-            <Button
-              onClick={() => saveMutation.mutate()}
-              className="gradient-orange glow-orange text-primary-foreground"
-              disabled={saveMutation.isPending || !rows.some(r => r.present && r.value)}
-            >
-              <Save className="mr-2 h-4 w-4" />
-              {saveMutation.isPending ? "Saving..." : "Save Session"}
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => {
+                  if (!selectedTest) return;
+                  exportTeamSessionReport({
+                    teamName: focus.teamName || "Team",
+                    testName: selectedTest.name,
+                    testUnit: selectedTest.unit,
+                    sessionDate,
+                    athletes: rows.map(r => ({
+                      name: r.name,
+                      value: r.present && r.value ? Number(r.value) : null,
+                      present: r.present && !!r.value,
+                    })),
+                  });
+                }}
+                variant="outline"
+                className="border-primary/30 text-primary hover:bg-primary/10"
+                disabled={!rows.some(r => r.present && r.value)}
+              >
+                <FileDown className="mr-2 h-4 w-4" />
+                Export Session
+              </Button>
+              <Button
+                onClick={() => saveMutation.mutate()}
+                className="gradient-orange glow-orange text-primary-foreground"
+                disabled={saveMutation.isPending || !rows.some(r => r.present && r.value)}
+              >
+                <Save className="mr-2 h-4 w-4" />
+                {saveMutation.isPending ? "Saving..." : "Save Session"}
+              </Button>
+            </div>
           </div>
         </motion.div>
       )}
