@@ -6,7 +6,7 @@ import { progressionDelta, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, isStreet
 import { FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
 import { Activity, TrendingUp, TrendingDown, Minus, Target, ChevronRight, FileDown } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { useState, useRef, useCallback } from "react";
+import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
 import { SportBadge } from "@/components/SportBadge";
 import { Button } from "@/components/ui/button";
