@@ -34,6 +34,7 @@ export default function CoachDashboard() {
   const { user } = useAuth();
   const { focus } = useCoachFocus();
   const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
+  const [rankingTestId, setRankingTestId] = useState<string | null>(null);
 
   // Get team stats
   const { data: teams } = useQuery({
