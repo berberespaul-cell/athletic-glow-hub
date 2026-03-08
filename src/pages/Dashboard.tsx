@@ -290,6 +290,7 @@ export default function Dashboard() {
             </div>
           </motion.div>
         )}
+        <TestInfoModal test={infoTest} open={!!infoTest} onOpenChange={(open) => !open && setInfoTest(null)} />
       </div>
     </TooltipProvider>
   );
