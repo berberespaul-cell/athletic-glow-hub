@@ -18,6 +18,7 @@ export default function AuthPage() {
   const [name, setName] = useState("");
   const [selectedRole, setSelectedRole] = useState<AppRole>("athlete");
   const [sex, setSex] = useState<string>("");
+  const [inviteCode, setInviteCode] = useState("");
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
 
@@ -31,6 +32,11 @@ export default function AuthPage() {
         if (error) throw error;
         navigate("/");
       } else {
+        // Validate sex for athletes
+        if (selectedRole === "athlete" && !sex) {
+          throw new Error("Please select your gender (Male/Female)");
+        }
+
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
@@ -44,6 +50,11 @@ export default function AuthPage() {
           const updateData: Record<string, any> = { name };
           if (sex) updateData.sex = sex;
           await supabase.from("profiles").update(updateData).eq("user_id", data.user.id);
+
+          // If athlete provided an invite code, claim the profile
+          if (selectedRole === "athlete" && inviteCode.trim()) {
+            await claimInviteCode(data.user.id, inviteCode.trim().toUpperCase());
+          }
         }
         toast({ title: "Account created!", description: "You can now sign in." });
         navigate("/");
@@ -54,6 +65,58 @@ export default function AuthPage() {
       setLoading(false);
     }
   };
+
+  async function claimInviteCode(userId: string, code: string) {
+    try {
+      // Find the profile with this invite code
+      const { data: targetProfile, error: findErr } = await supabase
+        .from("profiles")
+        .select("id, name, sport, sex, position, height_cm, weight_kg, birth_date, coach_created_by")
+        .eq("invite_code", code)
+        .maybeSingle();
+
+      if (findErr || !targetProfile) {
+        toast({ title: "Invalid Code", description: "No profile found with that invite code.", variant: "destructive" });
+        return;
+      }
+
+      // Update the coach-created profile with the new user's id and clear invite code
+      const { error: updateErr } = await supabase
+        .from("profiles")
+        .update({
+          user_id: userId,
+          invite_code: null,
+        } as any)
+        .eq("id", targetProfile.id);
+
+      if (updateErr) throw updateErr;
+
+      // Delete the auto-created profile for this user (the one created by trigger)
+      // First find it
+      const { data: autoProfile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", userId)
+        .neq("id", targetProfile.id)
+        .maybeSingle();
+
+      if (autoProfile) {
+        await supabase.from("profiles").delete().eq("id", autoProfile.id);
+      }
+
+      // Update the coach_athletes link if needed
+      if (targetProfile.coach_created_by) {
+        await supabase.from("coach_athletes").insert({
+          coach_id: targetProfile.coach_created_by,
+          athlete_id: userId,
+        } as any);
+      }
+
+      toast({ title: "Profile claimed!", description: `You've been linked to your coach's team as ${targetProfile.name}.` });
+    } catch (err: any) {
+      console.error("Claim error:", err);
+    }
+  }
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
@@ -79,75 +142,65 @@ export default function AuthPage() {
             <>
               <div>
                 <Label htmlFor="name" className="text-muted-foreground">Full Name</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Your name"
-                  required={!isLogin}
-                  className="mt-1 border-border bg-secondary text-foreground placeholder:text-muted-foreground"
-                />
+                <Input id="name" value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" required={!isLogin}
+                  className="mt-1 border-border bg-secondary text-foreground placeholder:text-muted-foreground" />
               </div>
               <div>
                 <Label className="text-muted-foreground">I am a...</Label>
                 <div className="mt-2 grid grid-cols-2 gap-3">
                   {(["athlete", "coach"] as AppRole[]).map((r) => (
-                    <button
-                      key={r}
-                      type="button"
-                      onClick={() => setSelectedRole(r)}
+                    <button key={r} type="button" onClick={() => setSelectedRole(r)}
                       className={`flex items-center justify-center gap-2 rounded-xl border p-3 text-sm font-medium transition-all ${
                         selectedRole === r
                           ? "border-primary bg-primary/10 text-primary"
                           : "border-border bg-secondary text-muted-foreground hover:border-primary/50"
-                      }`}
-                    >
+                      }`}>
                       {r === "athlete" ? <Zap className="h-4 w-4" /> : <Activity className="h-4 w-4" />}
                       {r.charAt(0).toUpperCase() + r.slice(1)}
                     </button>
                   ))}
                 </div>
               </div>
-              <div>
-                <Label className="text-muted-foreground">Sex</Label>
-                <Select value={sex} onValueChange={setSex}>
-                  <SelectTrigger className="mt-1 border-border bg-secondary text-foreground">
-                    <SelectValue placeholder="Select..." />
-                  </SelectTrigger>
-                  <SelectContent className="border-border bg-card">
-                    <SelectItem value="male" className="text-foreground">Male</SelectItem>
-                    <SelectItem value="female" className="text-foreground">Female</SelectItem>
-                    <SelectItem value="other" className="text-foreground">Other</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+
+              {selectedRole === "athlete" && (
+                <>
+                  <div>
+                    <Label className="text-muted-foreground">Gender *</Label>
+                    <Select value={sex} onValueChange={setSex}>
+                      <SelectTrigger className="mt-1 border-border bg-secondary text-foreground">
+                        <SelectValue placeholder="Select gender..." />
+                      </SelectTrigger>
+                      <SelectContent className="border-border bg-card">
+                        <SelectItem value="male" className="text-foreground">Male</SelectItem>
+                        <SelectItem value="female" className="text-foreground">Female</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div>
+                    <Label className="text-muted-foreground">Athlete Code (optional)</Label>
+                    <Input value={inviteCode} onChange={(e) => setInviteCode(e.target.value)}
+                      placeholder="Enter code from your coach"
+                      className="mt-1 border-border bg-secondary text-foreground placeholder:text-muted-foreground" />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      If your coach gave you a code, enter it to link your profile. You can also do this later.
+                    </p>
+                  </div>
+                </>
+              )}
             </>
           )}
 
           <div>
             <Label htmlFor="email" className="text-muted-foreground">Email</Label>
-            <Input
-              id="email"
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@example.com"
-              required
-              className="mt-1 border-border bg-secondary text-foreground placeholder:text-muted-foreground"
-            />
+            <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com" required
+              className="mt-1 border-border bg-secondary text-foreground placeholder:text-muted-foreground" />
           </div>
           <div>
             <Label htmlFor="password" className="text-muted-foreground">Password</Label>
-            <Input
-              id="password"
-              type="password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="••••••••"
-              required
-              minLength={6}
-              className="mt-1 border-border bg-secondary text-foreground placeholder:text-muted-foreground"
-            />
+            <Input id="password" type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••" required minLength={6}
+              className="mt-1 border-border bg-secondary text-foreground placeholder:text-muted-foreground" />
           </div>
 
           <Button type="submit" className="gradient-orange w-full text-primary-foreground glow-orange" disabled={loading}>

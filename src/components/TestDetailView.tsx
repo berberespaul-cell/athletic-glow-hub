@@ -28,10 +28,12 @@ interface Props {
   testId: string;
   testName: string;
   onBack: () => void;
+  overrideProfileId?: string;
 }
 
-export default function TestDetailView({ testId, testName, onBack }: Props) {
-  const { profileId } = useAuth();
+export default function TestDetailView({ testId, testName, onBack, overrideProfileId }: Props) {
+  const { profileId: authProfileId } = useAuth();
+  const profileId = overrideProfileId || authProfileId;
 
   const { data: profile } = useQuery({
     queryKey: ["profile", profileId],
