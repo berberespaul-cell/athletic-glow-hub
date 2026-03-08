@@ -10,10 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Save, Users, AlertCircle } from "lucide-react";
+import { Save, Users, AlertCircle, Info } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { getRecommendedTestNames, FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
 import CoachFocusSelector from "@/components/CoachFocusSelector";
+import TestInfoModal from "@/components/TestInfoModal";
 
 interface AthleteRow {
   profileId: string;
