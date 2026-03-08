@@ -11,6 +11,8 @@ import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
 import CoachFocusSelector from "@/components/CoachFocusSelector";
 import { SportBadge } from "@/components/SportBadge";
+import TeamPerformanceRankings from "@/components/TeamPerformanceRankings";
+import TeamWellnessChart from "@/components/TeamWellnessChart";
 
 type TestSummary = {
   testId: string;
