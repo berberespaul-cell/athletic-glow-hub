@@ -1,7 +1,7 @@
-import { useMemo } from "react";
+import { useMemo, useState, useCallback } from "react";
 import { motion } from "framer-motion";
 import { ScatterChart, Scatter, XAxis, YAxis, CartesianGrid, ReferenceLine, ReferenceArea, ResponsiveContainer, Tooltip as RechartsTooltip, Cell } from "recharts";
-import { Activity } from "lucide-react";
+import { Activity, ExternalLink } from "lucide-react";
 
 interface WellnessPoint {
   profileId: string;
@@ -10,7 +10,9 @@ interface WellnessPoint {
   sleep: number;
   soreness: number;
   fatigue: number;
-  x: number; // index for scatter spread
+  periodPain: number;
+  hasPeriodPain: boolean;
+  x: number;
 }
 
 interface Props {
@@ -18,21 +20,10 @@ interface Props {
   onAthleteClick: (profileId: string, name: string) => void;
 }
 
-function CustomTooltip({ active, payload }: any) {
-  if (!active || !payload?.length) return null;
-  const d = payload[0].payload as WellnessPoint;
-  return (
-    <div className="rounded-lg border border-border/50 bg-background px-3 py-2 text-xs shadow-xl">
-      <p className="mb-1 font-semibold text-foreground">{d.name}</p>
-      <p className="text-muted-foreground">Wellness: <span className="font-bold text-primary">{d.score.toFixed(1)}/6</span></p>
-      <p className="text-muted-foreground">Sleep: {d.sleep}/6 · Soreness: {d.soreness}/6 · Fatigue: {d.fatigue}/6</p>
-    </div>
-  );
-}
-
 export default function TeamWellnessChart({ results, onAthleteClick }: Props) {
+  const [pinned, setPinned] = useState<WellnessPoint | null>(null);
+
   const data = useMemo(() => {
-    // Get latest result per athlete that has wellness data
     const latestByAthlete = new Map<string, any>();
     const sorted = [...results]
       .filter(r => r.wellness_score != null)
@@ -49,6 +40,8 @@ export default function TeamWellnessChart({ results, onAthleteClick }: Props) {
       sleep: Number(r.wellness_sleep || 0),
       soreness: Number(r.wellness_soreness || 0),
       fatigue: Number(r.wellness_fatigue || 0),
+      periodPain: Number(r.wellness_period_pain || 0),
+      hasPeriodPain: r.wellness_period_pain != null && r.wellness_period_pain > 0,
       x: i + 1,
     }));
 
@@ -63,6 +56,65 @@ export default function TeamWellnessChart({ results, onAthleteClick }: Props) {
   const min = scores.length ? Math.min(...scores) : 0;
   const max = scores.length ? Math.max(...scores) : 0;
   const range = max - min;
+
+  const getStatusLabel = useCallback((score: number) => {
+    if (score > mean + stdDev) return { label: "Well Above Avg", color: "text-success" };
+    if (score > mean) return { label: "Above Average", color: "text-success" };
+    if (score < mean - stdDev) return { label: "Well Below Avg", color: "text-destructive" };
+    if (score < mean) return { label: "Below Average", color: "text-warning" };
+    return { label: "Average", color: "text-muted-foreground" };
+  }, [mean, stdDev]);
+
+  const handleDotClick = useCallback((_: any, entry: any) => {
+    const point = entry?.payload || entry;
+    if (point?.profileId) {
+      setPinned(prev => prev?.profileId === point.profileId ? null : point);
+    }
+  }, []);
+
+  // Custom tooltip that shows on hover (recharts native) + pinned popover
+  function HoverTooltip({ active, payload }: any) {
+    if (pinned) return null; // Don't show hover tooltip when pinned
+    if (!active || !payload?.length) return null;
+    const d = payload[0].payload as WellnessPoint;
+    const status = getStatusLabel(d.score);
+    return <TooltipCard point={d} status={status} />;
+  }
+
+  function TooltipCard({ point, status, showAction }: { point: WellnessPoint; status: { label: string; color: string }; showAction?: boolean }) {
+    return (
+      <div className="rounded-xl border border-primary/30 bg-background px-4 py-3 text-xs shadow-2xl"
+        style={{ minWidth: 200 }}>
+        <div className="mb-2 flex items-center justify-between border-b border-primary/20 pb-2">
+          <p className="font-bold text-foreground">{point.name}</p>
+          <span className={`text-[10px] font-semibold uppercase ${status.color}`}>{status.label}</span>
+        </div>
+        <div className="mb-2">
+          <span className="text-muted-foreground">Wellness: </span>
+          <span className="text-base font-bold text-primary">{point.score.toFixed(1)}</span>
+          <span className="text-muted-foreground">/6</span>
+        </div>
+        <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
+          <span>Sleep</span><span className="text-right font-medium text-foreground">{point.sleep}/6</span>
+          <span>Soreness</span><span className="text-right font-medium text-foreground">{point.soreness}/6</span>
+          <span>Fatigue</span><span className="text-right font-medium text-foreground">{point.fatigue}/6</span>
+          {point.hasPeriodPain && (
+            <>
+              <span>Period Pain</span><span className="text-right font-medium text-foreground">{point.periodPain}/6</span>
+            </>
+          )}
+        </div>
+        {showAction && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onAthleteClick(point.profileId, point.name); }}
+            className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
+          >
+            View Full Profile <ExternalLink className="h-3 w-3" />
+          </button>
+        )}
+      </div>
+    );
+  }
 
   if (!data.length) {
     return (
@@ -79,9 +131,10 @@ export default function TeamWellnessChart({ results, onAthleteClick }: Props) {
     <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
       {/* Chart */}
       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}
-        className="glass-card rounded-2xl p-5 lg:col-span-3">
+        className="glass-card relative rounded-2xl p-5 lg:col-span-3">
         <h2 className="mb-4 text-lg font-semibold text-foreground">Team Readiness Distribution</h2>
-        <div className="h-[280px]">
+        <p className="mb-2 text-xs text-muted-foreground">Click a dot to pin details · Click again to dismiss</p>
+        <div className="relative h-[280px]">
           <ResponsiveContainer width="100%" height="100%">
             <ScatterChart margin={{ top: 10, right: 20, bottom: 20, left: 10 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} />
@@ -91,29 +144,41 @@ export default function TeamWellnessChart({ results, onAthleteClick }: Props) {
                 tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
                 label={{ value: "Wellness Score", angle: -90, position: "insideLeft", fill: "hsl(var(--muted-foreground))", fontSize: 12 }} />
 
-              {/* ±1 SD band */}
               <ReferenceArea y1={Math.max(0, mean - stdDev)} y2={Math.min(6, mean + stdDev)}
                 fill="hsl(var(--muted-foreground))" fillOpacity={0.08} strokeOpacity={0} />
-
-              {/* Mean line */}
               <ReferenceLine y={mean} stroke="hsl(var(--primary))" strokeDasharray="6 3" strokeWidth={2}
                 label={{ value: `Mean ${mean.toFixed(1)}`, position: "right", fill: "hsl(var(--primary))", fontSize: 11 }} />
-
-              {/* Min / Max lines */}
               <ReferenceLine y={min} stroke="hsl(var(--destructive))" strokeDasharray="3 3" strokeWidth={1}
                 label={{ value: `Min ${min.toFixed(1)}`, position: "right", fill: "hsl(var(--destructive))", fontSize: 10 }} />
               <ReferenceLine y={max} stroke="hsl(var(--success))" strokeDasharray="3 3" strokeWidth={1}
                 label={{ value: `Max ${max.toFixed(1)}`, position: "right", fill: "hsl(var(--success))", fontSize: 10 }} />
 
-              <RechartsTooltip content={<CustomTooltip />} cursor={false} />
+              <RechartsTooltip content={<HoverTooltip />} cursor={false} />
 
-              <Scatter data={data} onClick={(entry: any) => onAthleteClick(entry.profileId, entry.name)}>
+              <Scatter data={data} onClick={handleDotClick}>
                 {data.map((d, i) => (
-                  <Cell key={i} fill="hsl(var(--primary))" r={8} className="cursor-pointer" stroke="hsl(var(--primary-foreground))" strokeWidth={2} />
+                  <Cell key={i}
+                    fill={pinned?.profileId === d.profileId ? "hsl(var(--primary))" : "hsl(var(--primary))"}
+                    r={pinned?.profileId === d.profileId ? 10 : 8}
+                    className="cursor-pointer"
+                    stroke={pinned?.profileId === d.profileId ? "hsl(var(--primary))" : "hsl(var(--primary-foreground))"}
+                    strokeWidth={pinned?.profileId === d.profileId ? 3 : 2}
+                  />
                 ))}
               </Scatter>
             </ScatterChart>
           </ResponsiveContainer>
+
+          {/* Pinned popover */}
+          {pinned && (
+            <div className="absolute right-4 top-4 z-50 animate-in fade-in-0 zoom-in-95">
+              <TooltipCard point={pinned} status={getStatusLabel(pinned.score)} showAction />
+              <button onClick={() => setPinned(null)}
+                className="mt-1 w-full text-center text-[10px] text-muted-foreground hover:text-foreground">
+                Dismiss
+              </button>
+            </div>
+          )}
         </div>
       </motion.div>
 
