@@ -24,7 +24,7 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
-  const [infoTest, setInfoTest] = useState<any>(null);
+  
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", profileId],
