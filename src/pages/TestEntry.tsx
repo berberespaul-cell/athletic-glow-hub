@@ -306,6 +306,12 @@ export default function TestEntry() {
                 className="text-xs text-primary hover:text-primary/80">
                 <Plus className="mr-1 h-3 w-3" /> Create Custom Test
               </Button>
+              {selectedTest && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShowTestInfo(true)}
+                  className="text-xs text-primary hover:text-primary/80">
+                  <Info className="mr-1 h-3 w-3" /> Test Info
+                </Button>
+              )}
             </div>
 
             {selectedTest?.description && (
