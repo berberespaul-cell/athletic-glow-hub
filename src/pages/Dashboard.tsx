@@ -212,7 +212,7 @@ export default function Dashboard() {
                       <p className="flex items-center gap-1.5 truncate font-medium text-foreground">
                         {s.name}
                         <TestInfoButton onClick={() => {
-                          const test = allResults?.find((r: any) => r.test_id === s.testId);
+                          const test = allResults?.find((r: any) => r.test_id === s.testId) as any;
                           setInfoTest({ name: s.name, family: s.family, unit: s.unit, description: test?.test_library?.description });
                         }} />
                       </p>
