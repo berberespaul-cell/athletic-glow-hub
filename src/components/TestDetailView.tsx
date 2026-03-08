@@ -152,8 +152,25 @@ export default function TestDetailView({ testId, testName, onBack, overrideProfi
       </div>
     );
   };
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("results").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["test-results"] });
+      queryClient.invalidateQueries({ queryKey: ["all-results"] });
+      queryClient.invalidateQueries({ queryKey: ["all-results-dash"] });
+      queryClient.invalidateQueries({ queryKey: ["athlete-results"] });
+      toast({ title: "Result deleted" });
+      setDeleteId(null);
+    },
+    onError: (err: any) => {
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    },
+  });
 
-  return (
+
     <div className="space-y-6">
       {/* Header with back */}
       <div className="flex items-center gap-3">
