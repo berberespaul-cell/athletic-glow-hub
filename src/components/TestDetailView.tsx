@@ -14,19 +14,13 @@ import {
   cycleDayToPhase,
   wellnessScore,
 } from "@/lib/calculations";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { ArrowLeft, BarChart3, TrendingUp, Pencil, Trash2 } from "lucide-react";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import EditResultDialog from "@/components/EditResultDialog";
 import { toast } from "@/hooks/use-toast";
 
-const PHASE_COLORS: Record<string, string> = {
-  menstruation: "rgba(239,68,68,0.08)",
-  follicular: "rgba(34,197,94,0.08)",
-  ovulation: "rgba(234,179,8,0.08)",
-  luteal: "rgba(139,92,246,0.08)",
-};
 
 interface Props {
   testId: string;
@@ -106,20 +100,6 @@ export default function TestDetailView({ testId, testName, onBack, overrideProfi
     };
   });
 
-  // Phase background zones
-  const phaseZones: { x1: string; x2: string; phase: string }[] = [];
-  if (showCycle && chartData.length > 0) {
-    let currentPhase = chartData[0].phaseName;
-    let zoneStart = chartData[0].date;
-    for (let i = 1; i < chartData.length; i++) {
-      if (chartData[i].phaseName !== currentPhase) {
-        if (currentPhase) phaseZones.push({ x1: zoneStart, x2: chartData[i - 1].date, phase: currentPhase });
-        currentPhase = chartData[i].phaseName;
-        zoneStart = chartData[i].date;
-      }
-    }
-    if (currentPhase) phaseZones.push({ x1: zoneStart, x2: chartData[chartData.length - 1].date, phase: currentPhase });
-  }
 
   const cv = (results?.length || 0) >= 2 ? coefficientOfVariation(results!.map((r) => Number(r.value))) : null;
 
@@ -192,30 +172,11 @@ export default function TestDetailView({ testId, testName, onBack, overrideProfi
           <TrendingUp className="h-5 w-5 text-primary" /> Progression
         </h3>
 
-        {showCycle && chartData.some((d) => d.phaseName) && (
-          <div className="mb-3 flex flex-wrap gap-3 text-xs">
-            {[
-              { label: "Menstrual", color: "hsl(0 84% 60%)" },
-              { label: "Follicular", color: "hsl(142 71% 45%)" },
-              { label: "Ovulatory", color: "hsl(38 92% 50%)" },
-              { label: "Luteal", color: "hsl(270 60% 55%)" },
-            ].map((p) => (
-              <span key={p.label} className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
-                <span className="text-muted-foreground">{p.label}</span>
-              </span>
-            ))}
-          </div>
-        )}
 
         {chartData.length > 0 ? (
           <>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
-                {showCycle &&
-                  phaseZones.map((zone, i) => (
-                    <ReferenceArea key={i} x1={zone.x1} x2={zone.x2} fill={PHASE_COLORS[zone.phase] || "transparent"} fillOpacity={1} />
-                  ))}
                 <XAxis dataKey="date" stroke="hsl(0 0% 64%)" fontSize={12} />
                 <YAxis stroke="hsl(0 0% 64%)" fontSize={12} />
                 <Tooltip content={<CustomTooltip />} />
@@ -224,10 +185,7 @@ export default function TestDetailView({ testId, testName, onBack, overrideProfi
                   dataKey="value"
                   stroke="hsl(14 100% 60%)"
                   strokeWidth={3}
-                  dot={({ cx, cy, payload }: any) => {
-                    const color = showCycle && payload.phaseColor ? payload.phaseColor : "hsl(14 100% 60%)";
-                    return <circle cx={cx} cy={cy} r={5} fill={color} stroke="hsl(14 100% 60%)" strokeWidth={2} />;
-                  }}
+                  dot={{ r: 5, fill: "hsl(14 100% 60%)", stroke: "hsl(14 100% 60%)", strokeWidth: 2 }}
                   activeDot={{ r: 7 }}
                 />
               </LineChart>
