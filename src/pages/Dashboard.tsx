@@ -8,7 +8,7 @@ import { Activity, TrendingUp, TrendingDown, Minus, Target, ChevronRight } from 
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
-import { SportBadge, SportWatermark } from "@/components/SportBadge";
+import { SportBadge } from "@/components/SportBadge";
 
 type TestSummary = {
   testId: string;
