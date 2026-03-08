@@ -278,14 +278,21 @@ export default function CoachDashboard() {
           </>
         )}
 
-        {/* Team focus: show overview */}
+        {/* Team focus: show analytics */}
         {focus.mode === "team" && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">Team: {focus.teamName}</h2>
-            <p className="text-muted-foreground">
-              Use the <span className="font-medium text-primary">Team Test Entry</span> to log bulk results, or switch to an individual athlete to view their performance.
-            </p>
-          </motion.div>
+          <>
+            <TeamPerformanceRankings
+              results={teamResults || []}
+              tests={teamTests}
+              onAthleteClick={handleTeamAthleteClick}
+              selectedTestId={rankingTestId}
+              onTestChange={setRankingTestId}
+            />
+            <TeamWellnessChart
+              results={teamResults || []}
+              onAthleteClick={handleTeamAthleteClick}
+            />
+          </>
         )}
       </div>
     </TooltipProvider>
