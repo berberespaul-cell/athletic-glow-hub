@@ -302,6 +302,7 @@ export default function CoachDashboard() {
             />
           </>
         )}
+        <TestInfoModal test={infoTest} open={!!infoTest} onOpenChange={(open) => !open && setInfoTest(null)} />
       </div>
     </TooltipProvider>
   );
