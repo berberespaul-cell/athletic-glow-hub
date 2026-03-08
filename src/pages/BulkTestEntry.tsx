@@ -307,6 +307,13 @@ export default function BulkTestEntry() {
           </div>
         </motion.div>
       )}
+      {selectedTest && (
+        <TestInfoModal
+          test={{ name: selectedTest.name, family: selectedTest.family, unit: selectedTest.unit, description: selectedTest.description }}
+          open={showTestInfo}
+          onOpenChange={setShowTestInfo}
+        />
+      )}
     </div>
   );
 }
