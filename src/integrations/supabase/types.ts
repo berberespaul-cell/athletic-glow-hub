@@ -92,7 +92,7 @@ export type Database = {
           sex: string | null
           sport: Database["public"]["Enums"]["sport_type"]
           updated_at: string | null
-          user_id: string
+          user_id: string | null
           weight_kg: number | null
         }
         Insert: {
@@ -107,7 +107,7 @@ export type Database = {
           sex?: string | null
           sport?: Database["public"]["Enums"]["sport_type"]
           updated_at?: string | null
-          user_id: string
+          user_id?: string | null
           weight_kg?: number | null
         }
         Update: {
@@ -122,7 +122,7 @@ export type Database = {
           sex?: string | null
           sport?: Database["public"]["Enums"]["sport_type"]
           updated_at?: string | null
-          user_id?: string
+          user_id?: string | null
           weight_kg?: number | null
         }
         Relationships: []
