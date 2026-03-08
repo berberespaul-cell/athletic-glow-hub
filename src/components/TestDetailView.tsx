@@ -172,21 +172,6 @@ export default function TestDetailView({ testId, testName, onBack, overrideProfi
           <TrendingUp className="h-5 w-5 text-primary" /> Progression
         </h3>
 
-        {showCycle && chartData.some((d) => d.phaseName) && (
-          <div className="mb-3 flex flex-wrap gap-3 text-xs">
-            {[
-              { label: "Menstrual", color: "hsl(0 84% 60%)" },
-              { label: "Follicular", color: "hsl(142 71% 45%)" },
-              { label: "Ovulatory", color: "hsl(38 92% 50%)" },
-              { label: "Luteal", color: "hsl(270 60% 55%)" },
-            ].map((p) => (
-              <span key={p.label} className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: p.color }} />
-                <span className="text-muted-foreground">{p.label}</span>
-              </span>
-            ))}
-          </div>
-        )}
 
         {chartData.length > 0 ? (
           <>
