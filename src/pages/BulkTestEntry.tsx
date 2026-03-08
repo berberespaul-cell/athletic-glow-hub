@@ -183,7 +183,12 @@ export default function BulkTestEntry() {
       {selectedTest && rows.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6">
           <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Users className="h-5 w-5 text-primary" /> {selectedTest.name} — Team Table
+            <Users className="h-5 w-5 text-primary" /> {selectedTest.name}
+            <button onClick={() => setShowTestInfo(true)}
+              className="inline-flex h-5 w-5 items-center justify-center rounded-full border border-primary/40 text-primary/60 transition-colors hover:bg-primary hover:text-primary-foreground">
+              <Info className="h-3 w-3" />
+            </button>
+            — Team Table
           </h3>
 
           <div className="overflow-x-auto">
