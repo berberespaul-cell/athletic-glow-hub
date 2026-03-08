@@ -90,24 +90,6 @@ export default function AnalyticsPage() {
     };
   });
 
-  // Build phase background zones for the chart
-  const phaseZones: { x1: string; x2: string; phase: string }[] = [];
-  if (showCycle && chartData.length > 0) {
-    let currentPhase = chartData[0].phaseName;
-    let zoneStart = chartData[0].date;
-    for (let i = 1; i < chartData.length; i++) {
-      if (chartData[i].phaseName !== currentPhase) {
-        if (currentPhase) {
-          phaseZones.push({ x1: zoneStart, x2: chartData[i - 1].date, phase: currentPhase });
-        }
-        currentPhase = chartData[i].phaseName;
-        zoneStart = chartData[i].date;
-      }
-    }
-    if (currentPhase) {
-      phaseZones.push({ x1: zoneStart, x2: chartData[chartData.length - 1].date, phase: currentPhase });
-    }
-  }
 
   const cv = selectedResults.length >= 2
     ? coefficientOfVariation(selectedResults.map(r => Number(r.value)))
