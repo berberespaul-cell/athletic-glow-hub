@@ -36,7 +36,7 @@ export default function CoachDashboard() {
   const { focus, setAthleteFocus } = useCoachFocus();
   const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
   const [rankingTestId, setRankingTestId] = useState<string | null>(null);
-  const [infoTest, setInfoTest] = useState<any>(null);
+  
 
   // Get team stats
   const { data: teams } = useQuery({
