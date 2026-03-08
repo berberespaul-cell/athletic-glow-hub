@@ -7,10 +7,12 @@ import { progressionDelta, isLowerBetter, isStreetlifting, streetliftingRelative
 import { FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
 import { Activity, TrendingUp, TrendingDown, Minus, ChevronRight, Users } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import TestDetailView from "@/components/TestDetailView";
 import CoachFocusSelector from "@/components/CoachFocusSelector";
 import { SportBadge } from "@/components/SportBadge";
+import TeamPerformanceRankings from "@/components/TeamPerformanceRankings";
+import TeamWellnessChart from "@/components/TeamWellnessChart";
 
 type TestSummary = {
   testId: string;
@@ -30,8 +32,9 @@ type TestSummary = {
 
 export default function CoachDashboard() {
   const { user } = useAuth();
-  const { focus } = useCoachFocus();
+  const { focus, setAthleteFocus } = useCoachFocus();
   const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
+  const [rankingTestId, setRankingTestId] = useState<string | null>(null);
 
   // Get team stats
   const { data: teams } = useQuery({
@@ -74,6 +77,46 @@ export default function CoachDashboard() {
     },
     enabled: focus.mode === "athlete" && !!focus.athleteProfileId,
   });
+
+  // Fetch team member IDs then all their results for team analytics
+  const { data: teamMemberIds } = useQuery({
+    queryKey: ["team-member-ids", focus.teamId],
+    queryFn: async () => {
+      const { data } = await supabase.from("team_members").select("profile_id").eq("team_id", focus.teamId!);
+      return data?.map(d => d.profile_id) || [];
+    },
+    enabled: focus.mode === "team" && !!focus.teamId,
+  });
+
+  const { data: teamResults } = useQuery({
+    queryKey: ["team-results", focus.teamId, teamMemberIds],
+    queryFn: async () => {
+      if (!teamMemberIds?.length) return [];
+      const { data } = await supabase
+        .from("results")
+        .select("*, test_library(name, family, unit), profiles(name)")
+        .in("profile_id", teamMemberIds)
+        .order("session_date", { ascending: false });
+      return data || [];
+    },
+    enabled: focus.mode === "team" && !!teamMemberIds?.length,
+  });
+
+  // Derive unique tests from team results
+  const teamTests = useMemo(() => {
+    if (!teamResults?.length) return [];
+    const seen = new Map<string, { id: string; name: string; unit: string; family: string }>();
+    teamResults.forEach((r: any) => {
+      if (r.test_library && !seen.has(r.test_id)) {
+        seen.set(r.test_id, { id: r.test_id, name: r.test_library.name, unit: r.test_library.unit, family: r.test_library.family });
+      }
+    });
+    return Array.from(seen.values());
+  }, [teamResults]);
+
+  const handleTeamAthleteClick = (profileId: string, name: string) => {
+    setAthleteFocus(profileId, name);
+  };
 
   if (selectedTest && focus.mode === "athlete" && focus.athleteProfileId) {
     return (
@@ -235,14 +278,21 @@ export default function CoachDashboard() {
           </>
         )}
 
-        {/* Team focus: show overview */}
+        {/* Team focus: show analytics */}
         {focus.mode === "team" && (
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6">
-            <h2 className="mb-4 text-lg font-semibold text-foreground">Team: {focus.teamName}</h2>
-            <p className="text-muted-foreground">
-              Use the <span className="font-medium text-primary">Team Test Entry</span> to log bulk results, or switch to an individual athlete to view their performance.
-            </p>
-          </motion.div>
+          <>
+            <TeamPerformanceRankings
+              results={teamResults || []}
+              tests={teamTests}
+              onAthleteClick={handleTeamAthleteClick}
+              selectedTestId={rankingTestId}
+              onTestChange={setRankingTestId}
+            />
+            <TeamWellnessChart
+              results={teamResults || []}
+              onAthleteClick={handleTeamAthleteClick}
+            />
+          </>
         )}
       </div>
     </TooltipProvider>
