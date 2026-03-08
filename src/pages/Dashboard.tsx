@@ -38,7 +38,7 @@ export default function Dashboard() {
       if (!profileId) return [];
       const { data } = await supabase
         .from("results")
-        .select("*, test_library(name, family, unit)")
+        .select("*, test_library(name, family, unit, description)")
         .eq("profile_id", profileId)
         .order("session_date", { ascending: false });
       return data || [];
