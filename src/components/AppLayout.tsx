@@ -71,17 +71,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { role } = useAuth();
 
-  // Redirect coach from / to /coach
-  if (role === "coach" && location.pathname === "/") {
-    return <Navigate to="/coach" replace />;
-  }
-
   useEffect(() => { setDrawerOpen(false); }, [location.pathname]);
   useEffect(() => {
     if (drawerOpen) { document.body.style.overflow = "hidden"; }
     else { document.body.style.overflow = ""; }
     return () => { document.body.style.overflow = ""; };
   }, [drawerOpen]);
+
+  // Redirect coach from / to /coach
+  if (role === "coach" && location.pathname === "/") {
+    return <Navigate to="/coach" replace />;
+  }
 
   if (isMobile) {
     return (
