@@ -32,7 +32,7 @@ type TestSummary = {
 
 export default function CoachDashboard() {
   const { user } = useAuth();
-  const { focus } = useCoachFocus();
+  const { focus, setAthleteFocus } = useCoachFocus();
   const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
   const [rankingTestId, setRankingTestId] = useState<string | null>(null);
 
