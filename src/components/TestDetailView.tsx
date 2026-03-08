@@ -38,6 +38,9 @@ interface Props {
 export default function TestDetailView({ testId, testName, onBack, overrideProfileId }: Props) {
   const { profileId: authProfileId } = useAuth();
   const profileId = overrideProfileId || authProfileId;
+  const queryClient = useQueryClient();
+  const [editResult, setEditResult] = useState<any>(null);
+  const [deleteId, setDeleteId] = useState<string | null>(null);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", profileId],
