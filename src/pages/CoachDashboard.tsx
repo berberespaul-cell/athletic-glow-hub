@@ -239,10 +239,6 @@ export default function CoachDashboard() {
                         <div className="min-w-0 flex-1">
                           <p className="flex items-center gap-1.5 truncate font-medium text-foreground">
                             {s.name}
-                            <TestInfoButton onClick={() => {
-                              const test = (athleteResults as any)?.find((r: any) => r.test_id === s.testId);
-                              setInfoTest({ name: s.name, family: s.family, unit: s.unit, description: test?.test_library?.description });
-                            }} />
                           </p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <span>{s.latestDate}</span>
