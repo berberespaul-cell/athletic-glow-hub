@@ -21,12 +21,6 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import EditResultDialog from "@/components/EditResultDialog";
 import { toast } from "@/hooks/use-toast";
 
-const PHASE_COLORS: Record<string, string> = {
-  menstruation: "rgba(239,68,68,0.08)",
-  follicular: "rgba(34,197,94,0.08)",
-  ovulation: "rgba(234,179,8,0.08)",
-  luteal: "rgba(139,92,246,0.08)",
-};
 
 interface Props {
   testId: string;
