@@ -96,7 +96,7 @@ export default function CoachDashboard() {
       if (!teamMemberIds?.length) return [];
       const { data } = await supabase
         .from("results")
-        .select("*, test_library(name, family, unit), profiles(name)")
+        .select("*, test_library(name, family, unit, description), profiles(name)")
         .in("profile_id", teamMemberIds)
         .order("session_date", { ascending: false });
       return data || [];
