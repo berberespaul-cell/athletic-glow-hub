@@ -15,7 +15,7 @@ import { SportBadge } from "@/components/SportBadge";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { progressionDelta, isLowerBetter, isStreetlifting, streetliftingRelativeStrength, cycleDayToPhase } from "@/lib/calculations";
 import TestDetailView from "@/components/TestDetailView";
-import TestInfoModal, { TestInfoButton } from "@/components/TestInfoModal";
+
 
 const SPORTS: SportType[] = ["rugby", "basketball", "volleyball", "hybrid"];
 
