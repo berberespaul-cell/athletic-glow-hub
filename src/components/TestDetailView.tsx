@@ -170,7 +170,7 @@ export default function TestDetailView({ testId, testName, onBack, overrideProfi
     },
   });
 
-
+  return (
     <div className="space-y-6">
       {/* Header with back */}
       <div className="flex items-center gap-3">
