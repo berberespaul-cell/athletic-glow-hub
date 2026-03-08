@@ -15,7 +15,7 @@ import { SportBadge } from "@/components/SportBadge";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { progressionDelta, isLowerBetter, isStreetlifting, streetliftingRelativeStrength, cycleDayToPhase } from "@/lib/calculations";
 import TestDetailView from "@/components/TestDetailView";
-import TestInfoModal, { TestInfoButton } from "@/components/TestInfoModal";
+
 
 const SPORTS: SportType[] = ["rugby", "basketball", "volleyball", "hybrid"];
 
@@ -24,7 +24,7 @@ export default function ProfilePage() {
   const queryClient = useQueryClient();
   const [editing, setEditing] = useState(false);
   const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
-  const [infoTest, setInfoTest] = useState<any>(null);
+  
 
   const { data: profile, isLoading } = useQuery({
     queryKey: ["profile", profileId],
@@ -436,10 +436,6 @@ export default function ProfilePage() {
                         <div className="min-w-0 flex-1">
                           <p className="flex items-center gap-1.5 truncate font-medium text-foreground">
                             {s.name}
-                            <TestInfoButton onClick={() => {
-                              const test = allResults?.find((r: any) => r.test_id === s.testId) as any;
-                              setInfoTest({ name: s.name, family: s.family, unit: s.unit, description: test?.test_library?.description });
-                            }} />
                           </p>
                           <div className="flex items-center gap-2 text-xs text-muted-foreground">
                             <span>{s.latestDate}</span>
@@ -500,7 +496,7 @@ export default function ProfilePage() {
           </motion.div>
         )}
 
-        <TestInfoModal test={infoTest} open={!!infoTest} onOpenChange={(open) => !open && setInfoTest(null)} />
+        
       </div>
     </TooltipProvider>
   );
