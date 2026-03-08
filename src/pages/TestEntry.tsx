@@ -293,12 +293,18 @@ export default function TestEntry() {
               </SelectContent>
             </Select>
 
-            {sport !== 'hybrid' && !showAllTests && (
-              <Button type="button" variant="ghost" size="sm" onClick={() => setShowAllTests(true)}
-                className="mt-2 text-xs text-primary hover:text-primary/80">
-                <Library className="mr-1 h-3 w-3" /> Browse All Tests
+            <div className="mt-2 flex gap-2">
+              {sport !== 'hybrid' && !showAllTests && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShowAllTests(true)}
+                  className="text-xs text-primary hover:text-primary/80">
+                  <Library className="mr-1 h-3 w-3" /> Browse All Tests
+                </Button>
+              )}
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowCreateTest(true)}
+                className="text-xs text-primary hover:text-primary/80">
+                <Plus className="mr-1 h-3 w-3" /> Create Custom Test
               </Button>
-            )}
+            </div>
 
             {selectedTest?.description && (
               <p className="mt-2 text-xs text-muted-foreground">{selectedTest.description}</p>
