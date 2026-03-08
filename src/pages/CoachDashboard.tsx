@@ -13,7 +13,7 @@ import CoachFocusSelector from "@/components/CoachFocusSelector";
 import { SportBadge } from "@/components/SportBadge";
 import TeamPerformanceRankings from "@/components/TeamPerformanceRankings";
 import TeamWellnessChart from "@/components/TeamWellnessChart";
-import TestInfoModal, { TestInfoButton } from "@/components/TestInfoModal";
+
 
 type TestSummary = {
   testId: string;
