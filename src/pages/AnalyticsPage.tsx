@@ -5,7 +5,7 @@ import { motion } from "framer-motion";
 import { progressionDelta, coefficientOfVariation, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, relativeForce, isStrengthTest, isStreetlifting, streetliftingRelativeStrength, cycleDayToPhase, wellnessScore } from "@/lib/calculations";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useState } from "react";
-import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceArea } from "recharts";
+import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts";
 import { BarChart3, TrendingUp, Target, Gauge } from "lucide-react";
 
 
