@@ -264,6 +264,7 @@ export default function TestDetailView({ testId, testName, onBack, overrideProfi
                   <TableHead>Δ%</TableHead>
                   <TableHead>Wellness</TableHead>
                   {showCycle && <TableHead>Cycle</TableHead>}
+                  <TableHead className="w-20">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -328,6 +329,18 @@ export default function TestDetailView({ testId, testName, onBack, overrideProfi
                           )}
                         </TableCell>
                       )}
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => setEditResult(r)}
+                            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-secondary hover:text-primary">
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button onClick={() => setDeleteId(r.id)}
+                            className="rounded-lg p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive">
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -336,6 +349,36 @@ export default function TestDetailView({ testId, testName, onBack, overrideProfi
           </div>
         </motion.div>
       )}
+
+      {/* Edit Dialog */}
+      {editResult && (
+        <EditResultDialog
+          open={!!editResult}
+          onOpenChange={(open) => { if (!open) setEditResult(null); }}
+          result={editResult}
+          unit={unit}
+          showWellness={!!editResult.wellness_fatigue}
+        />
+      )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deleteId} onOpenChange={(open) => { if (!open) setDeleteId(null); }}>
+        <AlertDialogContent className="border-border bg-background">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-foreground">Delete Result</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete this performance record.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteId && deleteMutation.mutate(deleteId)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
