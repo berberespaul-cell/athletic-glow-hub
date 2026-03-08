@@ -1,20 +1,12 @@
 import { useSportTheme } from "@/contexts/SportThemeContext";
 
-const SPORT_ICONS: Record<string, string> = {
-  basketball: "🏀",
-  volleyball: "🏐",
-  rugby: "🏉",
-  hybrid: "⚡",
-};
-
 export function SportBadge({ className = "" }: { className?: string }) {
-  const { theme, sport } = useSportTheme();
+  const { theme } = useSportTheme();
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-3 py-1 text-xs font-medium text-primary ${className}`}
+      className={`inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/10 px-4 py-1.5 text-sm font-bold text-primary ${className}`}
     >
-      <span>{SPORT_ICONS[sport]}</span>
       {theme.badge}
     </span>
   );
