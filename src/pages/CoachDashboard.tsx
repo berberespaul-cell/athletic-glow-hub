@@ -115,8 +115,7 @@ export default function CoachDashboard() {
   }, [teamResults]);
 
   const handleTeamAthleteClick = (profileId: string, name: string) => {
-    const { setAthleteFocus } = require("@/contexts/CoachFocusContext");
-    // We can't use the hook here, so we'll use the focus context from the component
+    setAthleteFocus(profileId, name);
   };
 
   if (selectedTest && focus.mode === "athlete" && focus.athleteProfileId) {
