@@ -248,16 +248,6 @@ export default function AnalyticsPage() {
           <>
             <ResponsiveContainer width="100%" height={300}>
               <LineChart data={chartData}>
-                {/* Phase background zones */}
-                {showCycle && phaseZones.map((zone, i) => (
-                  <ReferenceArea
-                    key={i}
-                    x1={zone.x1}
-                    x2={zone.x2}
-                    fill={PHASE_COLORS[zone.phase] || "transparent"}
-                    fillOpacity={1}
-                  />
-                ))}
                 <XAxis dataKey="date" stroke="hsl(0 0% 64%)" fontSize={12} />
                 <YAxis stroke="hsl(0 0% 64%)" fontSize={12} />
                 <Tooltip content={<CustomTooltip />} />
@@ -266,10 +256,7 @@ export default function AnalyticsPage() {
                   dataKey="value"
                   stroke="hsl(14 100% 60%)"
                   strokeWidth={3}
-                  dot={({ cx, cy, payload }: any) => {
-                    const color = showCycle && payload.phaseColor ? payload.phaseColor : "hsl(14 100% 60%)";
-                    return <circle cx={cx} cy={cy} r={5} fill={color} stroke="hsl(14 100% 60%)" strokeWidth={2} />;
-                  }}
+                  dot={{ r: 5, fill: "hsl(14 100% 60%)", stroke: "hsl(14 100% 60%)", strokeWidth: 2 }}
                   activeDot={{ r: 7 }}
                 />
               </LineChart>
