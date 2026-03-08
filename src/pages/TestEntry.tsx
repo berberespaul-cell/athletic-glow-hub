@@ -458,6 +458,8 @@ export default function TestEntry() {
           </Button>
         </motion.div>
       </form>
+
+      <CreateCustomTestDialog open={showCreateTest} onOpenChange={setShowCreateTest} />
     </div>
   );
 }
