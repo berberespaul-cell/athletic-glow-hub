@@ -262,6 +262,7 @@ export type Database = {
       test_library: {
         Row: {
           created_at: string | null
+          created_by_user_id: string | null
           description: string | null
           family: Database["public"]["Enums"]["test_family"]
           id: string
@@ -273,6 +274,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string | null
+          created_by_user_id?: string | null
           description?: string | null
           family: Database["public"]["Enums"]["test_family"]
           id?: string
@@ -284,6 +286,7 @@ export type Database = {
         }
         Update: {
           created_at?: string | null
+          created_by_user_id?: string | null
           description?: string | null
           family?: Database["public"]["Enums"]["test_family"]
           id?: string

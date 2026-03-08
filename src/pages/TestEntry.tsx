@@ -13,7 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Calendar, CheckCircle2, Dumbbell, ChevronDown, Library, Star } from "lucide-react";
+import { Calendar, CheckCircle2, Dumbbell, ChevronDown, Library, Star, Plus } from "lucide-react";
+import CreateCustomTestDialog from "@/components/CreateCustomTestDialog";
 
 export default function TestEntry() {
   const { profileId } = useAuth();
@@ -31,6 +32,7 @@ export default function TestEntry() {
   const [notes, setNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
   const [showAllTests, setShowAllTests] = useState(false);
+  const [showCreateTest, setShowCreateTest] = useState(false);
 
   const { data: profile } = useQuery({
     queryKey: ["profile", profileId],
@@ -291,12 +293,18 @@ export default function TestEntry() {
               </SelectContent>
             </Select>
 
-            {sport !== 'hybrid' && !showAllTests && (
-              <Button type="button" variant="ghost" size="sm" onClick={() => setShowAllTests(true)}
-                className="mt-2 text-xs text-primary hover:text-primary/80">
-                <Library className="mr-1 h-3 w-3" /> Browse All Tests
+            <div className="mt-2 flex gap-2">
+              {sport !== 'hybrid' && !showAllTests && (
+                <Button type="button" variant="ghost" size="sm" onClick={() => setShowAllTests(true)}
+                  className="text-xs text-primary hover:text-primary/80">
+                  <Library className="mr-1 h-3 w-3" /> Browse All Tests
+                </Button>
+              )}
+              <Button type="button" variant="ghost" size="sm" onClick={() => setShowCreateTest(true)}
+                className="text-xs text-primary hover:text-primary/80">
+                <Plus className="mr-1 h-3 w-3" /> Create Custom Test
               </Button>
-            )}
+            </div>
 
             {selectedTest?.description && (
               <p className="mt-2 text-xs text-muted-foreground">{selectedTest.description}</p>
@@ -450,6 +458,8 @@ export default function TestEntry() {
           </Button>
         </motion.div>
       </form>
+
+      <CreateCustomTestDialog open={showCreateTest} onOpenChange={setShowCreateTest} />
     </div>
   );
 }
