@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { progressionDelta, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, isStreetlifting, streetliftingRelativeStrength, cycleDayToPhase } from "@/lib/calculations";
 import { FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
-import { Activity, TrendingUp, TrendingDown, Minus, Target, ChevronRight, FileDown } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, Minus, Target, ChevronRight, FileDown, Dumbbell } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
@@ -12,6 +12,8 @@ import { SportBadge } from "@/components/SportBadge";
 import { Button } from "@/components/ui/button";
 import { exportAthleteReport, type AthleteReportData } from "@/lib/pdfExport";
 import { toast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { brzycki1RM, relativeForce } from "@/lib/calculations";
 
 
 type TestSummary = {
@@ -255,6 +257,17 @@ export default function Dashboard() {
                 const streetRS = isStreet && profile?.weight_kg
                   ? streetliftingRelativeStrength(s.latest, Number(profile.weight_kg))
                   : null;
+                
+                // Strength-to-weight ratio for strength/weightlifting
+                const isStrengthFamily = ['strength', 'weightlifting'].includes(s.family);
+                const strengthToWeight = isStrengthFamily && profile?.weight_kg && !isStreet
+                  ? (() => {
+                      const oneRM = s.latestReps && s.latestReps > 1
+                        ? brzycki1RM(s.latest, s.latestReps)
+                        : s.latest;
+                      return relativeForce(oneRM, Number(profile.weight_kg));
+                    })()
+                  : null;
 
                 return (
                   <button
@@ -265,6 +278,12 @@ export default function Dashboard() {
                     <div className="min-w-0 flex-1">
                       <p className="flex items-center gap-1.5 truncate font-medium text-foreground">
                         {s.name}
+                        {strengthToWeight !== null && (
+                          <Badge className="ml-1.5 bg-primary/15 text-primary border-primary/30 text-[10px] px-1.5 py-0">
+                            <Dumbbell className="mr-0.5 h-2.5 w-2.5" />
+                            {strengthToWeight.toFixed(1)}x BW
+                          </Badge>
+                        )}
                       </p>
                       <div className="flex items-center gap-2 text-xs text-muted-foreground">
                         <span>{s.latestDate}</span>

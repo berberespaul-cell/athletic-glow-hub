@@ -136,6 +136,7 @@ export type Database = {
           notes: string | null
           profile_id: string
           reps: number | null
+          season_id: string | null
           session_date: string
           test_id: string
           value: number
@@ -153,6 +154,7 @@ export type Database = {
           notes?: string | null
           profile_id: string
           reps?: number | null
+          season_id?: string | null
           session_date: string
           test_id: string
           value: number
@@ -170,6 +172,7 @@ export type Database = {
           notes?: string | null
           profile_id?: string
           reps?: number | null
+          season_id?: string | null
           session_date?: string
           test_id?: string
           value?: number
@@ -188,6 +191,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "results_season_id_fkey"
+            columns: ["season_id"]
+            isOneToOne: false
+            referencedRelation: "seasons"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "results_test_id_fkey"
             columns: ["test_id"]
             isOneToOne: false
@@ -195,6 +205,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      seasons: {
+        Row: {
+          coach_id: string
+          created_at: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean
+          name: string
+          start_date: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          start_date?: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          start_date?: string
+        }
+        Relationships: []
       }
       team_members: {
         Row: {

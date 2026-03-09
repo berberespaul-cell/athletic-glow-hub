@@ -13,6 +13,7 @@ import CoachFocusSelector from "@/components/CoachFocusSelector";
 import { SportBadge } from "@/components/SportBadge";
 import TeamPerformanceRankings from "@/components/TeamPerformanceRankings";
 import TeamWellnessChart from "@/components/TeamWellnessChart";
+import SeasonManager from "@/components/SeasonManager";
 
 
 type TestSummary = {
@@ -189,6 +190,7 @@ export default function CoachDashboard() {
         </div>
 
         <CoachFocusSelector />
+        <SeasonManager />
 
         {/* Overview when no focus */}
         {!focus.mode && (
