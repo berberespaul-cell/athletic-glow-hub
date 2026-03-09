@@ -12,6 +12,8 @@ import { SportBadge } from "@/components/SportBadge";
 import { Button } from "@/components/ui/button";
 import { exportAthleteReport, type AthleteReportData } from "@/lib/pdfExport";
 import { toast } from "@/hooks/use-toast";
+import { Badge } from "@/components/ui/badge";
+import { brzycki1RM, relativeForce } from "@/lib/calculations";
 
 
 type TestSummary = {
