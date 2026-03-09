@@ -190,6 +190,7 @@ export default function CoachDashboard() {
         </div>
 
         <CoachFocusSelector />
+        <SeasonManager />
 
         {/* Overview when no focus */}
         {!focus.mode && (
