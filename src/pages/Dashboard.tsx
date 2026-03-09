@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { progressionDelta, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, isStreetlifting, streetliftingRelativeStrength, cycleDayToPhase } from "@/lib/calculations";
 import { FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
-import { Activity, TrendingUp, TrendingDown, Minus, Target, ChevronRight, FileDown } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, Minus, Target, ChevronRight, FileDown, Dumbbell } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
