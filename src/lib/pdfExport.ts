@@ -1,17 +1,7 @@
 import jsPDF from "jspdf";
-import "jspdf-autotable";
+import autoTable from "jspdf-autotable";
 
-// Extend jsPDF type for autotable
-declare module "jspdf" {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-    lastAutoTable: { finalY: number };
-  }
-}
-
-const ORANGE = [230, 100, 50] as const; // hsl(14 100% 60%) ≈ rgb(230,100,50)
-const DARK_BG = [30, 30, 35] as const;
-const LIGHT_TEXT = [240, 240, 240] as const;
+const ORANGE = [230, 100, 50] as const;
 const MUTED_TEXT = [160, 160, 170] as const;
 
 function addFooter(doc: jsPDF) {
@@ -61,7 +51,7 @@ export function exportAthleteReport(data: AthleteReportData) {
   y += 3;
 
   if (data.wellnessAvg) {
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       head: [["Metric", "Average (1-6)"]],
       body: [
@@ -71,11 +61,11 @@ export function exportAthleteReport(data: AthleteReportData) {
         ["Overall", data.wellnessAvg.overall.toFixed(1)],
       ],
       theme: "grid",
-      headStyles: { fillColor: ORANGE, textColor: [255, 255, 255], fontStyle: "bold" },
+      headStyles: { fillColor: [...ORANGE], textColor: [255, 255, 255], fontStyle: "bold" },
       styles: { fontSize: 10, cellPadding: 3 },
       margin: { left: 14, right: 14 },
     });
-    y = doc.lastAutoTable.finalY + 10;
+    y = (doc as any).lastAutoTable.finalY + 10;
   } else {
     doc.setFontSize(10);
     doc.setTextColor(...MUTED_TEXT);
@@ -90,16 +80,16 @@ export function exportAthleteReport(data: AthleteReportData) {
   y += 3;
 
   if (data.topRecords.length > 0) {
-    doc.autoTable({
+    autoTable(doc, {
       startY: y,
       head: [["Test", "Result", "Date"]],
       body: data.topRecords.map(r => [r.name, `${r.value} ${r.unit}`, r.date]),
       theme: "grid",
-      headStyles: { fillColor: ORANGE, textColor: [255, 255, 255], fontStyle: "bold" },
+      headStyles: { fillColor: [...ORANGE], textColor: [255, 255, 255], fontStyle: "bold" },
       styles: { fontSize: 10, cellPadding: 3 },
       margin: { left: 14, right: 14 },
     });
-    y = doc.lastAutoTable.finalY + 10;
+    y = (doc as any).lastAutoTable.finalY + 10;
   } else {
     doc.setFontSize(10);
     doc.setTextColor(...MUTED_TEXT);
@@ -177,7 +167,7 @@ export function exportTeamSessionReport(data: TeamSessionReportData) {
   doc.text("Session Statistics", 14, y);
   y += 3;
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     head: [["Metric", "Value"]],
     body: [
@@ -188,11 +178,11 @@ export function exportTeamSessionReport(data: TeamSessionReportData) {
       ["Absent", String(absentCount)],
     ],
     theme: "grid",
-    headStyles: { fillColor: ORANGE, textColor: [255, 255, 255], fontStyle: "bold" },
+    headStyles: { fillColor: [...ORANGE], textColor: [255, 255, 255], fontStyle: "bold" },
     styles: { fontSize: 10, cellPadding: 3 },
     margin: { left: 14, right: 14 },
   });
-  y = doc.lastAutoTable.finalY + 10;
+  y = (doc as any).lastAutoTable.finalY + 10;
 
   // ─── Full Roster ───
   doc.setFontSize(14);
@@ -207,7 +197,7 @@ export function exportTeamSessionReport(data: TeamSessionReportData) {
     return b.value - a.value;
   });
 
-  doc.autoTable({
+  autoTable(doc, {
     startY: y,
     head: [["#", "Athlete", `Result (${data.testUnit})`, "Status"]],
     body: sortedAthletes.map((a, i) => [
@@ -217,7 +207,7 @@ export function exportTeamSessionReport(data: TeamSessionReportData) {
       a.present && a.value !== null ? "✓" : "Absent",
     ]),
     theme: "grid",
-    headStyles: { fillColor: ORANGE, textColor: [255, 255, 255], fontStyle: "bold" },
+    headStyles: { fillColor: [...ORANGE], textColor: [255, 255, 255], fontStyle: "bold" },
     styles: { fontSize: 10, cellPadding: 3 },
     margin: { left: 14, right: 14 },
   });
