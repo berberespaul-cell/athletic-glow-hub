@@ -8,6 +8,7 @@ import { Activity, TrendingUp, TrendingDown, Minus, Target, ChevronRight, FileDo
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
+import MaxPredictor from "@/components/MaxPredictor";
 import { SportBadge } from "@/components/SportBadge";
 import { Button } from "@/components/ui/button";
 import { exportAthleteReport, type AthleteReportData } from "@/lib/pdfExport";
