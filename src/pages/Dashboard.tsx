@@ -8,6 +8,7 @@ import { Activity, TrendingUp, TrendingDown, Minus, Target, ChevronRight, FileDo
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
+import MaxPredictor from "@/components/MaxPredictor";
 import { SportBadge } from "@/components/SportBadge";
 import { Button } from "@/components/ui/button";
 import { exportAthleteReport, type AthleteReportData } from "@/lib/pdfExport";
@@ -250,6 +251,11 @@ export default function Dashboard() {
             <h2 className="mb-4 text-lg font-semibold capitalize text-foreground">
               {FAMILY_LABELS[family]}
             </h2>
+            {family === "weightlifting" && (
+              <div className="mb-4">
+                <MaxPredictor results={(allResults || []) as any} />
+              </div>
+            )}
             <div className="space-y-2">
               {summariesByFamily[family]!.map(s => {
                 const rmLabel = get1RMLabel(s);
