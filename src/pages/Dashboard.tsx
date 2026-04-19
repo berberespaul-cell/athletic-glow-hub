@@ -251,6 +251,11 @@ export default function Dashboard() {
             <h2 className="mb-4 text-lg font-semibold capitalize text-foreground">
               {FAMILY_LABELS[family]}
             </h2>
+            {family === "weightlifting" && (
+              <div className="mb-4">
+                <MaxPredictor results={(allResults || []) as any} />
+              </div>
+            )}
             <div className="space-y-2">
               {summariesByFamily[family]!.map(s => {
                 const rmLabel = get1RMLabel(s);
