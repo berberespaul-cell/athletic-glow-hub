@@ -154,6 +154,8 @@ export default function TeamPerformanceRankings({ results, tests, onAthleteClick
         return s ? `Session ${s.number} : ${formatDate(s.date)}` : formatDate(effectiveSession);
       })();
 
+  if (!tests.length) return null;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
