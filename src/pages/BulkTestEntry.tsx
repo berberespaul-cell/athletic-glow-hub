@@ -411,6 +411,7 @@ export default function BulkTestEntry() {
           onOpenChange={setShowTestInfo}
         />
       )}
+      <CreateCustomTestDialog open={showCreateTest} onOpenChange={setShowCreateTest} />
     </div>
   );
 }
