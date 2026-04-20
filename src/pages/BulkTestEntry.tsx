@@ -251,6 +251,7 @@ export default function BulkTestEntry() {
           <Input type="date" value={sessionDate} onChange={e => setSessionDate(e.target.value)}
             className="mt-1 border-border bg-secondary text-foreground" />
         </div>
+      </div>
 
       {selectedTest && rows.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6">
