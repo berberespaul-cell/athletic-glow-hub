@@ -185,26 +185,64 @@ export default function BulkTestEntry() {
       </div>
       <CoachFocusSelector />
 
+      {/* Sport-aware test filter */}
+      <div className="glass-card flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Test library:</span>
+          {hasRecommendations ? (
+            <Tabs value={testFilter} onValueChange={(v) => setTestFilter(v as "suggested" | "all")}>
+              <TabsList className="bg-secondary">
+                <TabsTrigger value="suggested" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                  Suggested for {teamSport.charAt(0).toUpperCase() + teamSport.slice(1)}
+                </TabsTrigger>
+                <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Library className="mr-1.5 h-3.5 w-3.5" />
+                  Full Library
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          ) : (
+            <span className="text-xs text-muted-foreground">Hybrid team — full library shown</span>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowCreateTest(true)}
+          className="border-primary/40 text-primary hover:bg-primary/10"
+        >
+          <Plus className="mr-1.5 h-3.5 w-3.5" /> Create Custom Test
+        </Button>
+      </div>
+
       <div className="flex flex-wrap items-end gap-4">
         <div className="min-w-[250px] flex-1">
-          <Label className="text-muted-foreground">Test</Label>
+          <Label className="text-muted-foreground">
+            Test {testFilter === "suggested" && hasRecommendations && (
+              <span className="ml-1 text-xs text-primary">(Recommended battery)</span>
+            )}
+          </Label>
           <Select value={selectedTestId} onValueChange={setSelectedTestId}>
             <SelectTrigger className="mt-1 border-border bg-secondary text-foreground">
               <SelectValue placeholder="Choose a test..." />
             </SelectTrigger>
             <SelectContent className="max-h-80 border-border bg-card">
-              {FAMILY_ORDER.filter(f => allByFamily[f]?.length).map(family => (
+              {FAMILY_ORDER.filter(f => visibleByFamily[f]?.length).map(family => (
                 <div key={family}>
-                  <div className="px-2 py-1 text-xs font-bold uppercase text-muted-foreground">
+                  <div className="px-2 py-1 text-xs font-bold uppercase text-primary/80">
                     {FAMILY_LABELS[family]}
                   </div>
-                  {allByFamily[family]!.map((t: any) => (
+                  {visibleByFamily[family]!.map((t: any) => (
                     <SelectItem key={t.id} value={t.id} className="text-foreground">
-                      {t.name} ({t.unit})
+                      {t.name} ({t.unit}){t.is_custom && <span className="ml-1 text-xs text-primary">★</span>}
                     </SelectItem>
                   ))}
                 </div>
               ))}
+              {visibleTests.length === 0 && (
+                <div className="px-3 py-4 text-center text-sm text-muted-foreground">No tests available</div>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -213,7 +251,6 @@ export default function BulkTestEntry() {
           <Input type="date" value={sessionDate} onChange={e => setSessionDate(e.target.value)}
             className="mt-1 border-border bg-secondary text-foreground" />
         </div>
-      </div>
 
       {selectedTest && rows.length > 0 && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-6">
