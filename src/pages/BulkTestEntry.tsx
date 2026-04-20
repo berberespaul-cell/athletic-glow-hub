@@ -112,7 +112,25 @@ export default function BulkTestEntry() {
     });
     return grouped;
   };
-  const allByFamily = groupByFamily(tests || []);
+
+  // Sport-specific filtering
+  const recommendedNames = getRecommendedTestNames(teamSport);
+  const hasRecommendations = recommendedNames.length > 0;
+  const suggestedTests = useMemo(() => {
+    if (!tests) return [];
+    const recommended = tests.filter(t => recommendedNames.includes(t.name));
+    const customs = tests.filter((t: any) => t.is_custom);
+    // Merge unique
+    const seen = new Set<string>();
+    return [...recommended, ...customs].filter(t => {
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
+  }, [tests, recommendedNames]);
+
+  const visibleTests = testFilter === "suggested" && hasRecommendations ? suggestedTests : (tests || []);
+  const visibleByFamily = groupByFamily(visibleTests);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
