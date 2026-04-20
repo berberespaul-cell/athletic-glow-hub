@@ -44,8 +44,6 @@ export default function TeamPerformanceRankings({ results, tests, onAthleteClick
   const [showOverview, setShowOverview] = useState(false);
   const [selectedSessionDate, setSelectedSessionDate] = useState<string>("all");
 
-  if (!tests.length) return null;
-
   const testId = selectedTestId || tests[0]?.id;
   const testInfo = tests.find(t => t.id === testId);
 
