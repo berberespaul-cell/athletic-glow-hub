@@ -40,6 +40,20 @@ export default function BulkTestEntry() {
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split("T")[0]);
   const [rows, setRows] = useState<AthleteRow[]>([]);
   const [showTestInfo, setShowTestInfo] = useState(false);
+  const [testFilter, setTestFilter] = useState<"suggested" | "all">("suggested");
+  const [showCreateTest, setShowCreateTest] = useState(false);
+
+  // Get team info (including sport)
+  const { data: teamInfo } = useQuery({
+    queryKey: ["team-info-bulk", focus.teamId],
+    queryFn: async () => {
+      if (!focus.teamId) return null;
+      const { data } = await supabase.from("teams").select("sport, name").eq("id", focus.teamId).single();
+      return data;
+    },
+    enabled: focus.mode === "team" && !!focus.teamId,
+  });
+  const teamSport = (teamInfo?.sport || "hybrid") as SportType;
 
   // Get team members for selected team
   const { data: teamMembers } = useQuery({
