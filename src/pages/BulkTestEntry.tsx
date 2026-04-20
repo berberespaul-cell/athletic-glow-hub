@@ -264,6 +264,10 @@ export default function BulkTestEntry() {
             — Team Table
           </h3>
 
+          <div className="mb-3 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs text-muted-foreground">
+            <span className="font-medium text-primary">Wellness scale (1–6):</span> 1 = Very Poor · 2 = Poor · 3 = Below Average · 4 = Average · 5 = Good · 6 = Excellent
+          </div>
+
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
