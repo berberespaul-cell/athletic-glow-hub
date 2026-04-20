@@ -10,12 +10,14 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { toast } from "@/hooks/use-toast";
 import { motion } from "framer-motion";
-import { Save, Users, AlertCircle, Info, FileDown } from "lucide-react";
+import { Save, Users, AlertCircle, Info, FileDown, Plus, Sparkles, Library } from "lucide-react";
 import { exportTeamSessionReport } from "@/lib/pdfExport";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { getRecommendedTestNames, FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { getRecommendedTestNames, FAMILY_LABELS, FAMILY_ORDER, type TestFamily, type SportType } from "@/lib/sportTests";
 import CoachFocusSelector from "@/components/CoachFocusSelector";
 import TestInfoModal from "@/components/TestInfoModal";
+import CreateCustomTestDialog from "@/components/CreateCustomTestDialog";
 
 interface AthleteRow {
   profileId: string;
@@ -38,6 +40,20 @@ export default function BulkTestEntry() {
   const [sessionDate, setSessionDate] = useState(new Date().toISOString().split("T")[0]);
   const [rows, setRows] = useState<AthleteRow[]>([]);
   const [showTestInfo, setShowTestInfo] = useState(false);
+  const [testFilter, setTestFilter] = useState<"suggested" | "all">("suggested");
+  const [showCreateTest, setShowCreateTest] = useState(false);
+
+  // Get team info (including sport)
+  const { data: teamInfo } = useQuery({
+    queryKey: ["team-info-bulk", focus.teamId],
+    queryFn: async () => {
+      if (!focus.teamId) return null;
+      const { data } = await supabase.from("teams").select("sport, name").eq("id", focus.teamId).single();
+      return data;
+    },
+    enabled: focus.mode === "team" && !!focus.teamId,
+  });
+  const teamSport = (teamInfo?.sport || "hybrid") as SportType;
 
   // Get team members for selected team
   const { data: teamMembers } = useQuery({
@@ -96,7 +112,25 @@ export default function BulkTestEntry() {
     });
     return grouped;
   };
-  const allByFamily = groupByFamily(tests || []);
+
+  // Sport-specific filtering
+  const recommendedNames = getRecommendedTestNames(teamSport);
+  const hasRecommendations = recommendedNames.length > 0;
+  const suggestedTests = useMemo(() => {
+    if (!tests) return [];
+    const recommended = tests.filter(t => recommendedNames.includes(t.name));
+    const customs = tests.filter((t: any) => t.is_custom);
+    // Merge unique
+    const seen = new Set<string>();
+    return [...recommended, ...customs].filter(t => {
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
+  }, [tests, recommendedNames]);
+
+  const visibleTests = testFilter === "suggested" && hasRecommendations ? suggestedTests : (tests || []);
+  const visibleByFamily = groupByFamily(visibleTests);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
@@ -151,26 +185,64 @@ export default function BulkTestEntry() {
       </div>
       <CoachFocusSelector />
 
+      {/* Sport-aware test filter */}
+      <div className="glass-card flex flex-wrap items-center justify-between gap-3 rounded-2xl p-4">
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-muted-foreground">Test library:</span>
+          {hasRecommendations ? (
+            <Tabs value={testFilter} onValueChange={(v) => setTestFilter(v as "suggested" | "all")}>
+              <TabsList className="bg-secondary">
+                <TabsTrigger value="suggested" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Sparkles className="mr-1.5 h-3.5 w-3.5" />
+                  Suggested for {teamSport.charAt(0).toUpperCase() + teamSport.slice(1)}
+                </TabsTrigger>
+                <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                  <Library className="mr-1.5 h-3.5 w-3.5" />
+                  Full Library
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          ) : (
+            <span className="text-xs text-muted-foreground">Hybrid team — full library shown</span>
+          )}
+        </div>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setShowCreateTest(true)}
+          className="border-primary/40 text-primary hover:bg-primary/10"
+        >
+          <Plus className="mr-1.5 h-3.5 w-3.5" /> Create Custom Test
+        </Button>
+      </div>
+
       <div className="flex flex-wrap items-end gap-4">
         <div className="min-w-[250px] flex-1">
-          <Label className="text-muted-foreground">Test</Label>
+          <Label className="text-muted-foreground">
+            Test {testFilter === "suggested" && hasRecommendations && (
+              <span className="ml-1 text-xs text-primary">(Recommended battery)</span>
+            )}
+          </Label>
           <Select value={selectedTestId} onValueChange={setSelectedTestId}>
             <SelectTrigger className="mt-1 border-border bg-secondary text-foreground">
               <SelectValue placeholder="Choose a test..." />
             </SelectTrigger>
             <SelectContent className="max-h-80 border-border bg-card">
-              {FAMILY_ORDER.filter(f => allByFamily[f]?.length).map(family => (
+              {FAMILY_ORDER.filter(f => visibleByFamily[f]?.length).map(family => (
                 <div key={family}>
-                  <div className="px-2 py-1 text-xs font-bold uppercase text-muted-foreground">
+                  <div className="px-2 py-1 text-xs font-bold uppercase text-primary/80">
                     {FAMILY_LABELS[family]}
                   </div>
-                  {allByFamily[family]!.map((t: any) => (
+                  {visibleByFamily[family]!.map((t: any) => (
                     <SelectItem key={t.id} value={t.id} className="text-foreground">
-                      {t.name} ({t.unit})
+                      {t.name} ({t.unit}){t.is_custom && <span className="ml-1 text-xs text-primary">★</span>}
                     </SelectItem>
                   ))}
                 </div>
               ))}
+              {visibleTests.length === 0 && (
+                <div className="px-3 py-4 text-center text-sm text-muted-foreground">No tests available</div>
+              )}
             </SelectContent>
           </Select>
         </div>
@@ -339,6 +411,7 @@ export default function BulkTestEntry() {
           onOpenChange={setShowTestInfo}
         />
       )}
+      <CreateCustomTestDialog open={showCreateTest} onOpenChange={setShowCreateTest} />
     </div>
   );
 }
