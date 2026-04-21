@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { progressionDelta, isLowerBetter, isStreetlifting, streetliftingRelativeStrength, cycleDayToPhase } from "@/lib/calculations";
 import { FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
-import { Activity, TrendingUp, TrendingDown, Minus, ChevronRight, Users } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, Minus, ChevronRight, Users, ArrowLeft } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useState, useMemo } from "react";
 import TestDetailView from "@/components/TestDetailView";
@@ -15,6 +15,7 @@ import { SportBadge } from "@/components/SportBadge";
 import TeamPerformanceRankings from "@/components/TeamPerformanceRankings";
 import TeamWellnessChart from "@/components/TeamWellnessChart";
 import SeasonManager from "@/components/SeasonManager";
+import MaxPredictor from "@/components/MaxPredictor";
 
 
 type TestSummary = {
@@ -35,7 +36,7 @@ type TestSummary = {
 
 export default function CoachDashboard() {
   const { user } = useAuth();
-  const { focus, setAthleteFocus } = useCoachFocus();
+  const { focus, previousTeam, setAthleteFocus, backToTeam } = useCoachFocus();
   const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
   const [rankingTestId, setRankingTestId] = useState<string | null>(null);
   
@@ -193,6 +194,18 @@ export default function CoachDashboard() {
         <CoachFocusSelector />
         <SeasonManager />
 
+        {/* Back to Team button */}
+        {focus.mode === "athlete" && previousTeam && (
+          <motion.button
+            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+            onClick={backToTeam}
+            className="flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to {previousTeam.teamName}
+          </motion.button>
+        )}
+
         {/* Calendar */}
         <DashboardCalendar
           profileIds={
@@ -202,7 +215,7 @@ export default function CoachDashboard() {
                 ? teamMemberIds
                 : allAthletes?.map(a => a.id) || []
           }
-          mode="coach"
+          mode={focus.mode === "athlete" ? "athlete" : "coach"}
         />
 
         {/* Overview when no focus */}
@@ -294,6 +307,11 @@ export default function CoachDashboard() {
                 </div>
               </motion.div>
             )}
+
+            {/* 1RM Predictor for weightlifting/strength tests */}
+            {athleteResults?.length && (summariesByFamily["weightlifting"]?.length || summariesByFamily["strength"]?.length) ? (
+              <MaxPredictor results={athleteResults.map(r => ({ value: Number(r.value), reps: r.reps ?? null, test_library: r.test_library as any }))} />
+            ) : null}
           </>
         )}
 
