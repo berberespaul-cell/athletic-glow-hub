@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronLeft, ChevronRight, CalendarDays, Bell, Plus, X, Dumbbell, Zap, Wind } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, Bell, Plus, X, Dumbbell, Zap, Wind, Users } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -270,7 +270,7 @@ export default function DashboardCalendar({ profileIds, mode }: Props) {
                   </p>
 
                   {/* Completed tests */}
-                  {dayResults.length > 0 && (
+                  {dayResults.length > 0 && mode === "athlete" && (
                     <div className="mb-2">
                       <p className="text-muted-foreground mb-1">Completed Tests</p>
                       {dayResults.map((r: any, ri: number) => (
@@ -282,6 +282,61 @@ export default function DashboardCalendar({ profileIds, mode }: Props) {
                       ))}
                     </div>
                   )}
+
+                  {/* Coach summary view */}
+                  {dayResults.length > 0 && mode === "coach" && (() => {
+                    // Group by test
+                    const byTest = new Map<string, { name: string; family: string; unit: string; values: number[] }>();
+                    dayResults.forEach((r: any) => {
+                      const tid = r.test_id;
+                      if (!byTest.has(tid)) {
+                        byTest.set(tid, {
+                          name: r.test_library?.name || "Unknown",
+                          family: r.test_library?.family || "",
+                          unit: r.test_library?.unit || "",
+                          values: [],
+                        });
+                      }
+                      byTest.get(tid)!.values.push(Number(r.value));
+                    });
+
+                    return (
+                      <div className="mb-2 space-y-2">
+                        <p className="text-muted-foreground mb-1">Test Summary</p>
+                        {Array.from(byTest.entries()).map(([tid, t]) => {
+                          const best = Math.max(...t.values);
+                          const lowest = Math.min(...t.values);
+                          const avg = (t.values.reduce((a, b) => a + b, 0) / t.values.length).toFixed(1);
+                          return (
+                            <div key={tid} className="border border-border/50 rounded-lg p-2 space-y-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`h-2 w-2 rounded-full ${FAMILY_COLORS[t.family] || "bg-muted-foreground"}`} />
+                                <span className="font-medium text-foreground text-[11px]">{t.name}</span>
+                              </div>
+                              <div className="text-[10px] text-muted-foreground">
+                                <Users className="h-2.5 w-2.5 inline mr-0.5" />
+                                {t.values.length} Athletes tested
+                              </div>
+                              <div className="grid grid-cols-3 gap-1 text-[10px]">
+                                <div className="text-center">
+                                  <p className="text-muted-foreground">Best</p>
+                                  <p className="text-green-400 font-semibold">{best} {t.unit}</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-muted-foreground">Average</p>
+                                  <p className="text-foreground font-semibold">{avg} {t.unit}</p>
+                                </div>
+                                <div className="text-center">
+                                  <p className="text-muted-foreground">Lowest</p>
+                                  <p className="text-red-400 font-semibold">{lowest} {t.unit}</p>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })()}
 
                   {/* Scheduled events */}
                   {dayEvents.length > 0 && (
