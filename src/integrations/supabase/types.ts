@@ -206,6 +206,54 @@ export type Database = {
           },
         ]
       }
+      scheduled_events: {
+        Row: {
+          created_at: string
+          event_date: string
+          event_type: string
+          id: string
+          notes: string | null
+          profile_id: string
+          test_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          event_date: string
+          event_type: string
+          id?: string
+          notes?: string | null
+          profile_id: string
+          test_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          event_date?: string
+          event_type?: string
+          id?: string
+          notes?: string | null
+          profile_id?: string
+          test_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scheduled_events_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "scheduled_events_test_id_fkey"
+            columns: ["test_id"]
+            isOneToOne: false
+            referencedRelation: "test_library"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       seasons: {
         Row: {
           coach_id: string
