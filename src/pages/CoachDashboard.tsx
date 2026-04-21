@@ -5,7 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { progressionDelta, isLowerBetter, isStreetlifting, streetliftingRelativeStrength, cycleDayToPhase } from "@/lib/calculations";
 import { FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
-import { Activity, TrendingUp, TrendingDown, Minus, ChevronRight, Users } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, Minus, ChevronRight, Users, ArrowLeft } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
 import { useState, useMemo } from "react";
 import TestDetailView from "@/components/TestDetailView";
@@ -193,6 +193,18 @@ export default function CoachDashboard() {
         <CoachFocusSelector />
         <SeasonManager />
 
+        {/* Back to Team button */}
+        {focus.mode === "athlete" && previousTeam && (
+          <motion.button
+            initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }}
+            onClick={backToTeam}
+            className="flex items-center gap-2 rounded-xl bg-primary/10 px-4 py-2 text-sm font-medium text-primary transition-colors hover:bg-primary/20"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Back to {previousTeam.teamName}
+          </motion.button>
+        )}
+
         {/* Calendar */}
         <DashboardCalendar
           profileIds={
@@ -202,7 +214,7 @@ export default function CoachDashboard() {
                 ? teamMemberIds
                 : allAthletes?.map(a => a.id) || []
           }
-          mode="coach"
+          mode={focus.mode === "athlete" ? "athlete" : "coach"}
         />
 
         {/* Overview when no focus */}
