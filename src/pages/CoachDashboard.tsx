@@ -15,6 +15,7 @@ import { SportBadge } from "@/components/SportBadge";
 import TeamPerformanceRankings from "@/components/TeamPerformanceRankings";
 import TeamWellnessChart from "@/components/TeamWellnessChart";
 import SeasonManager from "@/components/SeasonManager";
+import MaxPredictor from "@/components/MaxPredictor";
 
 
 type TestSummary = {
@@ -305,6 +306,11 @@ export default function CoachDashboard() {
                   <p className="text-muted-foreground">No results yet for {focus.athleteName}.</p>
                 </div>
               </motion.div>
+            )}
+
+            {/* 1RM Predictor for weightlifting/strength tests */}
+            {(summariesByFamily["weightlifting"]?.length || summariesByFamily["strength"]?.length) && (
+              <MaxPredictor overrideProfileId={focus.athleteProfileId!} />
             )}
           </>
         )}
