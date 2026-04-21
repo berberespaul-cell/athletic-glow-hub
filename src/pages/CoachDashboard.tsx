@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { useState, useMemo } from "react";
 import TestDetailView from "@/components/TestDetailView";
 import CoachFocusSelector from "@/components/CoachFocusSelector";
+import DashboardCalendar from "@/components/DashboardCalendar";
 import { SportBadge } from "@/components/SportBadge";
 import TeamPerformanceRankings from "@/components/TeamPerformanceRankings";
 import TeamWellnessChart from "@/components/TeamWellnessChart";
@@ -191,6 +192,18 @@ export default function CoachDashboard() {
 
         <CoachFocusSelector />
         <SeasonManager />
+
+        {/* Calendar */}
+        <DashboardCalendar
+          profileIds={
+            focus.mode === "athlete" && focus.athleteProfileId
+              ? [focus.athleteProfileId]
+              : focus.mode === "team" && teamMemberIds?.length
+                ? teamMemberIds
+                : allAthletes?.map(a => a.id) || []
+          }
+          mode="coach"
+        />
 
         {/* Overview when no focus */}
         {!focus.mode && (
