@@ -309,9 +309,9 @@ export default function CoachDashboard() {
             )}
 
             {/* 1RM Predictor for weightlifting/strength tests */}
-            {(summariesByFamily["weightlifting"]?.length || summariesByFamily["strength"]?.length) && (
-              <MaxPredictor overrideProfileId={focus.athleteProfileId!} />
-            )}
+            {athleteResults?.length && (summariesByFamily["weightlifting"]?.length || summariesByFamily["strength"]?.length) ? (
+              <MaxPredictor results={athleteResults.map(r => ({ value: Number(r.value), reps: r.reps ?? null, test_library: r.test_library as any }))} />
+            ) : null}
           </>
         )}
 
