@@ -16,6 +16,7 @@ import TeamPerformanceRankings from "@/components/TeamPerformanceRankings";
 import TeamWellnessChart from "@/components/TeamWellnessChart";
 import SeasonManager from "@/components/SeasonManager";
 import MaxPredictor from "@/components/MaxPredictor";
+import CoachAcwrBlock from "@/components/CoachAcwrBlock";
 
 
 type TestSummary = {
