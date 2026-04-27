@@ -231,27 +231,17 @@ export default function JumpRatioCard({ type, value, title }: Props) {
               transition={{ duration: 0.25 }}
               className="overflow-hidden"
             >
-              <div className="mt-3 space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
-                {axes.map(a => {
-                  const isCurrent = a.range.replace(/[<>]/g, "").trim() === getCurrentRangeKey(type, value);
-                  return (
-                    <div
-                      key={a.range}
-                      className={`rounded-lg p-2 ${isCurrent ? "bg-primary/15 ring-1 ring-primary/40" : ""}`}
-                    >
-                      <p className={`text-[11px] font-semibold ${isCurrent ? "text-primary" : "text-muted-foreground"}`}>
-                        {a.range} {isCurrent && "← current"}
-                      </p>
-                      <ul className="mt-1 space-y-0.5">
-                        {a.axes.map(x => (
-                          <li key={x} className="text-xs text-foreground/90">
-                            • {x}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })}
+              <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+                  Current zone · {axes[zone.color].label}
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {axes[zone.color].axes.map(x => (
+                    <li key={x} className="text-xs leading-snug text-foreground/90">
+                      • {x}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </motion.div>
           )}
