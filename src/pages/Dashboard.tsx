@@ -10,6 +10,7 @@ import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
 import DashboardCalendar from "@/components/DashboardCalendar";
 import MaxPredictor from "@/components/MaxPredictor";
+import JumpRatioCard from "@/components/JumpRatioCard";
 import { SportBadge } from "@/components/SportBadge";
 import { Button } from "@/components/ui/button";
 import { exportAthleteReport, type AthleteReportData } from "@/lib/pdfExport";
@@ -215,30 +216,12 @@ export default function Dashboard() {
 
         {/* Jump Ratio Cards */}
         {(cmjSj !== null || cmjAbal !== null) && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             {cmjSj !== null && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="glass-card rounded-2xl p-5">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Target className="h-4 w-4 text-primary" />
-                  <span className="text-sm">CMJ / SJ Ratio</span>
-                </div>
-                <p className="mt-2 text-3xl font-bold text-foreground">{cmjSj}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {cmjSj >= 1.05 && cmjSj <= 1.2 ? "✅ Optimal SSC" : cmjSj > 1.2 ? "⚠️ Over-reliant on SSC" : "⚠️ Low SSC"}
-                </p>
-              </motion.div>
+              <JumpRatioCard type="cmj-sj" value={cmjSj} title="CMJ / SJ Ratio" />
             )}
             {cmjAbal !== null && (
-              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="glass-card rounded-2xl p-5">
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Target className="h-4 w-4 text-primary" />
-                  <span className="text-sm">CMJ / Abalakov</span>
-                </div>
-                <p className="mt-2 text-3xl font-bold text-foreground">{cmjAbal}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {cmjAbal >= 0.8 && cmjAbal <= 0.95 ? "✅ Good arm coordination" : cmjAbal < 0.8 ? "⚠️ Poor coordination" : "✅ Minimal arm contribution"}
-                </p>
-              </motion.div>
+              <JumpRatioCard type="cmj-abalakov" value={cmjAbal} title="CMJ / Abalakov Ratio" />
             )}
           </div>
         )}
