@@ -50,21 +50,53 @@ function getCmjAbalZone(v: number): Zone {
   };
 }
 
-const TRAINING_AXES: Record<RatioType, { range: string; axes: string[] }[]> = {
-  "cmj-sj": [
-    { range: "<1.0", axes: ["Reactive strength development", "Ground contact time reduction", "SSC loading progression"] },
-    { range: "1.0–1.15", axes: ["Plyometric volume increase", "Depth jump introduction", "Reactive bounding work"] },
-    { range: "1.15–1.25", axes: ["Maintain plyometric stimulus", "Periodic max strength blocks", "Sport-specific transfer"] },
-    { range: "1.25–1.35", axes: ["Maintain elastic qualities", "Monitor concentric strength levels", "Cross-check with SJ isolated sessions"] },
-    { range: ">1.35", axes: ["Concentric max strength block", "Heavy squat / pulling cycles", "Reduce excessive plyo volume"] },
-  ],
-  "cmj-abalakov": [
-    { range: "<0.85", axes: ["Arm-swing technique work", "Lower body explosive isolation", "Upper-lower coordination drills"] },
-    { range: "0.85–0.95", axes: ["Refine arm timing", "Strengthen hip extension", "Loaded jump variations"] },
-    { range: "0.95–1.05", axes: ["Maintain coordination quality", "Sport-specific jump patterns", "Periodic technical review"] },
-    { range: "1.05–1.10", axes: ["Verify movement consistency", "Video analysis of jump phases", "Maintain current programming"] },
-    { range: ">1.10", axes: ["Technical assessment of jump", "Inter-segmental coordination", "Re-evaluate test execution"] },
-  ],
+type AxesByZone = Record<Zone["color"], { label: string; axes: string[] }>;
+
+const TRAINING_AXES: Record<RatioType, AxesByZone> = {
+  "cmj-sj": {
+    red: {
+      label: "< 1.00",
+      axes: ["Improve SSC efficiency", "Develop reactive strength qualities", "Reinforce eccentric control"],
+    },
+    yellow: {
+      label: "1.00 – 1.15",
+      axes: ["Enhance elastic energy utilization", "Expose the athlete to reactive stimuli", "Build neuromuscular responsiveness"],
+    },
+    green: {
+      label: "1.15 – 1.25",
+      axes: ["Maintain reactive qualities", "Sustain concentric strength base", "Transfer to sport-specific actions"],
+    },
+    "green-warn": {
+      label: "1.25 – 1.35",
+      axes: ["Preserve elastic profile", "Verify concentric force production", "Cross-check with isolated strength tests"],
+    },
+    orange: {
+      label: "> 1.35",
+      axes: ["Develop concentric force production", "Re-balance strength qualities", "Investigate maximal strength deficit"],
+    },
+  },
+  "cmj-abalakov": {
+    red: {
+      label: "< 0.85",
+      axes: ["Address arm-leg coordination", "Develop lower body autonomy", "Improve jump mechanics"],
+    },
+    yellow: {
+      label: "0.85 – 0.95",
+      axes: ["Refine inter-segmental timing", "Strengthen lower body independence", "Enhance hip extension power"],
+    },
+    green: {
+      label: "0.95 – 1.05",
+      axes: ["Maintain coordination quality", "Sustain explosive lower body output", "Reinforce sport-specific jump patterns"],
+    },
+    "green-warn": {
+      label: "1.05 – 1.10",
+      axes: ["Verify technical consistency", "Monitor movement quality", "Preserve current coordination profile"],
+    },
+    orange: {
+      label: "> 1.10",
+      axes: ["Re-assess test execution", "Investigate inter-segmental coordination", "Verify movement standardization"],
+    },
+  },
 };
 
 const SPORT_NOTES: Record<RatioType, Record<string, string>> = {
