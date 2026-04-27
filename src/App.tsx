@@ -13,6 +13,7 @@ import Dashboard from "@/pages/Dashboard";
 import CoachDashboard from "@/pages/CoachDashboard";
 import TestEntry from "@/pages/TestEntry";
 import BulkTestEntry from "@/pages/BulkTestEntry";
+import SessionLoadEntry from "@/pages/SessionLoadEntry";
 import TeamManagement from "@/pages/TeamManagement";
 import ProfilePage from "@/pages/ProfilePage";
 import NotFound from "./pages/NotFound";
@@ -34,6 +35,7 @@ const App = () => (
                 <Route path="/coach" element={<ProtectedRoute><AppLayout><CoachDashboard /></AppLayout></ProtectedRoute>} />
                 <Route path="/test-entry" element={<ProtectedRoute><AppLayout><TestEntry /></AppLayout></ProtectedRoute>} />
                 <Route path="/bulk-test-entry" element={<ProtectedRoute><AppLayout><BulkTestEntry /></AppLayout></ProtectedRoute>} />
+                <Route path="/session-load" element={<ProtectedRoute><AppLayout><SessionLoadEntry /></AppLayout></ProtectedRoute>} />
                 <Route path="/teams" element={<ProtectedRoute><AppLayout><TeamManagement /></AppLayout></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><AppLayout><ProfilePage /></AppLayout></ProtectedRoute>} />
                 <Route path="*" element={<NotFound />} />
