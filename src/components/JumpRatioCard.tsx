@@ -50,21 +50,53 @@ function getCmjAbalZone(v: number): Zone {
   };
 }
 
-const TRAINING_AXES: Record<RatioType, { range: string; axes: string[] }[]> = {
-  "cmj-sj": [
-    { range: "<1.0", axes: ["Reactive strength development", "Ground contact time reduction", "SSC loading progression"] },
-    { range: "1.0–1.15", axes: ["Plyometric volume increase", "Depth jump introduction", "Reactive bounding work"] },
-    { range: "1.15–1.25", axes: ["Maintain plyometric stimulus", "Periodic max strength blocks", "Sport-specific transfer"] },
-    { range: "1.25–1.35", axes: ["Maintain elastic qualities", "Monitor concentric strength levels", "Cross-check with SJ isolated sessions"] },
-    { range: ">1.35", axes: ["Concentric max strength block", "Heavy squat / pulling cycles", "Reduce excessive plyo volume"] },
-  ],
-  "cmj-abalakov": [
-    { range: "<0.85", axes: ["Arm-swing technique work", "Lower body explosive isolation", "Upper-lower coordination drills"] },
-    { range: "0.85–0.95", axes: ["Refine arm timing", "Strengthen hip extension", "Loaded jump variations"] },
-    { range: "0.95–1.05", axes: ["Maintain coordination quality", "Sport-specific jump patterns", "Periodic technical review"] },
-    { range: "1.05–1.10", axes: ["Verify movement consistency", "Video analysis of jump phases", "Maintain current programming"] },
-    { range: ">1.10", axes: ["Technical assessment of jump", "Inter-segmental coordination", "Re-evaluate test execution"] },
-  ],
+type AxesByZone = Record<Zone["color"], { label: string; axes: string[] }>;
+
+const TRAINING_AXES: Record<RatioType, AxesByZone> = {
+  "cmj-sj": {
+    red: {
+      label: "< 1.00",
+      axes: ["Improve SSC efficiency", "Develop reactive strength qualities", "Reinforce eccentric control"],
+    },
+    yellow: {
+      label: "1.00 – 1.15",
+      axes: ["Enhance elastic energy utilization", "Expose the athlete to reactive stimuli", "Build neuromuscular responsiveness"],
+    },
+    green: {
+      label: "1.15 – 1.25",
+      axes: ["Maintain reactive qualities", "Sustain concentric strength base", "Transfer to sport-specific actions"],
+    },
+    "green-warn": {
+      label: "1.25 – 1.35",
+      axes: ["Preserve elastic profile", "Verify concentric force production", "Cross-check with isolated strength tests"],
+    },
+    orange: {
+      label: "> 1.35",
+      axes: ["Develop concentric force production", "Re-balance strength qualities", "Investigate maximal strength deficit"],
+    },
+  },
+  "cmj-abalakov": {
+    red: {
+      label: "< 0.85",
+      axes: ["Address arm-leg coordination", "Develop lower body autonomy", "Improve jump mechanics"],
+    },
+    yellow: {
+      label: "0.85 – 0.95",
+      axes: ["Refine inter-segmental timing", "Strengthen lower body independence", "Enhance hip extension power"],
+    },
+    green: {
+      label: "0.95 – 1.05",
+      axes: ["Maintain coordination quality", "Sustain explosive lower body output", "Reinforce sport-specific jump patterns"],
+    },
+    "green-warn": {
+      label: "1.05 – 1.10",
+      axes: ["Verify technical consistency", "Monitor movement quality", "Preserve current coordination profile"],
+    },
+    orange: {
+      label: "> 1.10",
+      axes: ["Re-assess test execution", "Investigate inter-segmental coordination", "Verify movement standardization"],
+    },
+  },
 };
 
 const SPORT_NOTES: Record<RatioType, Record<string, string>> = {
@@ -199,27 +231,17 @@ export default function JumpRatioCard({ type, value, title }: Props) {
               transition={{ duration: 0.25 }}
               className="overflow-hidden"
             >
-              <div className="mt-3 space-y-2 rounded-xl border border-primary/20 bg-primary/5 p-3">
-                {axes.map(a => {
-                  const isCurrent = a.range.replace(/[<>]/g, "").trim() === getCurrentRangeKey(type, value);
-                  return (
-                    <div
-                      key={a.range}
-                      className={`rounded-lg p-2 ${isCurrent ? "bg-primary/15 ring-1 ring-primary/40" : ""}`}
-                    >
-                      <p className={`text-[11px] font-semibold ${isCurrent ? "text-primary" : "text-muted-foreground"}`}>
-                        {a.range} {isCurrent && "← current"}
-                      </p>
-                      <ul className="mt-1 space-y-0.5">
-                        {a.axes.map(x => (
-                          <li key={x} className="text-xs text-foreground/90">
-                            • {x}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  );
-                })}
+              <div className="mt-3 rounded-xl border border-primary/20 bg-primary/5 p-3">
+                <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+                  Current zone · {axes[zone.color].label}
+                </p>
+                <ul className="mt-2 space-y-1">
+                  {axes[zone.color].axes.map(x => (
+                    <li key={x} className="text-xs leading-snug text-foreground/90">
+                      • {x}
+                    </li>
+                  ))}
+                </ul>
               </div>
             </motion.div>
           )}
@@ -267,17 +289,3 @@ export default function JumpRatioCard({ type, value, title }: Props) {
   );
 }
 
-function getCurrentRangeKey(type: RatioType, v: number): string {
-  if (type === "cmj-sj") {
-    if (v < 1.0) return "1.0";
-    if (v < 1.15) return "1.0–1.15";
-    if (v < 1.25) return "1.15–1.25";
-    if (v < 1.35) return "1.25–1.35";
-    return "1.35";
-  }
-  if (v < 0.85) return "0.85";
-  if (v < 0.95) return "0.85–0.95";
-  if (v < 1.05) return "0.95–1.05";
-  if (v < 1.1) return "1.05–1.10";
-  return "1.10";
-}
