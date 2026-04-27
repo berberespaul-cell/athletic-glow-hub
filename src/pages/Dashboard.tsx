@@ -10,6 +10,7 @@ import { useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
 import DashboardCalendar from "@/components/DashboardCalendar";
 import MaxPredictor from "@/components/MaxPredictor";
+import JumpRatioCard from "@/components/JumpRatioCard";
 import { SportBadge } from "@/components/SportBadge";
 import { Button } from "@/components/ui/button";
 import { exportAthleteReport, type AthleteReportData } from "@/lib/pdfExport";
