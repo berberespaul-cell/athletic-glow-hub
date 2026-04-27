@@ -284,6 +284,45 @@ export type Database = {
         }
         Relationships: []
       }
+      session_loads: {
+        Row: {
+          coach_id: string
+          created_at: string
+          duration_min: number
+          id: string
+          notes: string | null
+          profile_id: string
+          rpe: number
+          session_date: string
+          session_type: string
+          updated_at: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          duration_min: number
+          id?: string
+          notes?: string | null
+          profile_id: string
+          rpe: number
+          session_date?: string
+          session_type?: string
+          updated_at?: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          duration_min?: number
+          id?: string
+          notes?: string | null
+          profile_id?: string
+          rpe?: number
+          session_date?: string
+          session_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       team_members: {
         Row: {
           created_at: string | null
