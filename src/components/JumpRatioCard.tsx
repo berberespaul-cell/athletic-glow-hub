@@ -289,17 +289,3 @@ export default function JumpRatioCard({ type, value, title }: Props) {
   );
 }
 
-function getCurrentRangeKey(type: RatioType, v: number): string {
-  if (type === "cmj-sj") {
-    if (v < 1.0) return "1.0";
-    if (v < 1.15) return "1.0–1.15";
-    if (v < 1.25) return "1.15–1.25";
-    if (v < 1.35) return "1.25–1.35";
-    return "1.35";
-  }
-  if (v < 0.85) return "0.85";
-  if (v < 0.95) return "0.85–0.95";
-  if (v < 1.05) return "0.95–1.05";
-  if (v < 1.1) return "1.05–1.10";
-  return "1.10";
-}
