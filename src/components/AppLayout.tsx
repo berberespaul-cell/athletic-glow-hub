@@ -1,6 +1,6 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { NavLink, useLocation, Navigate } from "react-router-dom";
-import { Activity, ClipboardList, LayoutDashboard, LogOut, Menu, Settings, Users, X, Table2 } from "lucide-react";
+import { Activity, ClipboardList, LayoutDashboard, LogOut, Menu, Settings, Users, X, Table2, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState, useEffect } from "react";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -16,6 +16,7 @@ function SidebarContent({ onNavigate }: { onNavigate?: () => void }) {
         { to: "/coach", icon: LayoutDashboard, label: "Dashboard" },
         { to: "/teams", icon: Users, label: "Teams" },
         { to: "/bulk-test-entry", icon: Table2, label: "Team Test Entry" },
+        { to: "/session-load", icon: Flame, label: "Session Load" },
         { to: "/profile", icon: Settings, label: "Profile" },
       ]
     : [

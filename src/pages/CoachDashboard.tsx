@@ -16,6 +16,7 @@ import TeamPerformanceRankings from "@/components/TeamPerformanceRankings";
 import TeamWellnessChart from "@/components/TeamWellnessChart";
 import SeasonManager from "@/components/SeasonManager";
 import MaxPredictor from "@/components/MaxPredictor";
+import CoachAcwrBlock from "@/components/CoachAcwrBlock";
 
 
 type TestSummary = {
@@ -216,6 +217,17 @@ export default function CoachDashboard() {
                 : allAthletes?.map(a => a.id) || []
           }
           mode={focus.mode === "athlete" ? "athlete" : "coach"}
+        />
+
+        {/* ACWR — Training Load (compact, coach-only, between calendar and rankings) */}
+        <CoachAcwrBlock
+          profileIds={
+            focus.mode === "athlete" && focus.athleteProfileId
+              ? [focus.athleteProfileId]
+              : focus.mode === "team" && teamMemberIds?.length
+                ? teamMemberIds
+                : allAthletes?.map(a => a.id) || []
+          }
         />
 
         {/* Overview when no focus */}
