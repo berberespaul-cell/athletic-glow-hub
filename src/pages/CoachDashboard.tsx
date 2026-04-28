@@ -319,6 +319,7 @@ export default function CoachDashboard() {
         {/* Team focus: show analytics */}
         {focus.mode === "team" && (
           <>
+            <CoachAcwrBlock profileIds={teamMemberIds || []} />
             <TeamPerformanceRankings
               results={teamResults || []}
               tests={teamTests}
