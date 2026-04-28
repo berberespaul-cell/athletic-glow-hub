@@ -55,23 +55,39 @@ export default function CoachAcwrBlock({ profileIds }: { profileIds: string[] })
     queryFn: async () => {
       const since = new Date();
       since.setDate(since.getDate() - 35);
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("session_loads")
-        .select("id, profile_id, session_date, session_type, rpe, duration_min, profiles(name)")
+        .select("id, profile_id, session_date, session_type, rpe, duration_min")
         .in("profile_id", profileIds)
         .gte("session_date", since.toISOString().slice(0, 10))
         .order("session_date", { ascending: false });
+      if (error) console.error("ACWR session_loads query error:", error);
       return data || [];
+    },
+    enabled,
+  });
+
+  const { data: profileNames } = useQuery({
+    queryKey: ["acwr-profile-names", profileIds],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("id, name")
+        .in("id", profileIds);
+      const map: Record<string, string> = {};
+      (data || []).forEach((p: any) => { map[p.id] = p.name; });
+      return map;
     },
     enabled,
   });
 
   const athletes: AthleteAcwr[] = useMemo(() => {
     if (!rows || !profileIds.length) return [];
+    const names = profileNames || {};
     const grouped = new Map<string, { name: string; loads: SessionLoad[] }>();
     rows.forEach((r: any) => {
       const id = r.profile_id;
-      if (!grouped.has(id)) grouped.set(id, { name: r.profiles?.name || "Athlete", loads: [] });
+      if (!grouped.has(id)) grouped.set(id, { name: names[id] || "Athlete", loads: [] });
       grouped.get(id)!.loads.push({
         id: r.id, profile_id: id, session_date: r.session_date,
         session_type: r.session_type, rpe: r.rpe, duration_min: r.duration_min,
