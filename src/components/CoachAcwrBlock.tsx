@@ -101,7 +101,7 @@ export default function CoachAcwrBlock({ profileIds }: { profileIds: string[] })
       profileId, name: g.name, loads: g.loads, acwr: computeAcwr(g.loads),
     })).filter((a) => a.name !== "—" || a.loads.length > 0)
       .sort((a, b) => (b.acwr.ratio ?? -1) - (a.acwr.ratio ?? -1));
-  }, [rows, profileIds]);
+  }, [rows, profileIds, profileNames]);
 
   if (role !== "coach") return null;
 
