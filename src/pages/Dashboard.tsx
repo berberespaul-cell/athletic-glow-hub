@@ -4,11 +4,11 @@ import { useQuery } from "@tanstack/react-query";
 import { motion } from "framer-motion";
 import { progressionDelta, isLowerBetter, cmjSjRatio, cmjAbalakovRatio, isStreetlifting, streetliftingRelativeStrength, cycleDayToPhase } from "@/lib/calculations";
 import { FAMILY_LABELS, FAMILY_ORDER, type TestFamily } from "@/lib/sportTests";
-import { Activity, TrendingUp, TrendingDown, Minus, Target, ChevronRight, FileDown, Dumbbell } from "lucide-react";
+import { Activity, TrendingUp, TrendingDown, Minus, ChevronRight, FileDown, Dumbbell, Zap } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
-import DashboardCalendar from "@/components/DashboardCalendar";
+import CompactCalendar from "@/components/CompactCalendar";
 import MaxPredictor from "@/components/MaxPredictor";
 import JumpRatioCard from "@/components/JumpRatioCard";
 import { SportBadge } from "@/components/SportBadge";
@@ -17,7 +17,7 @@ import { exportAthleteReport, type AthleteReportData } from "@/lib/pdfExport";
 import { toast } from "@/hooks/use-toast";
 import { Badge } from "@/components/ui/badge";
 import { brzycki1RM, relativeForce } from "@/lib/calculations";
-
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 type TestSummary = {
   testId: string;
@@ -39,6 +39,8 @@ export default function Dashboard() {
   const { profileId, role } = useAuth();
   const [selectedTest, setSelectedTest] = useState<{ id: string; name: string } | null>(null);
   const [exporting, setExporting] = useState(false);
+  const [maxPredictorOpen, setMaxPredictorOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<TestFamily | null>(null);
 
   const { data: allResults } = useQuery({
     queryKey: ["all-results-dash", profileId],
@@ -64,27 +66,26 @@ export default function Dashboard() {
     enabled: !!profileId,
   });
 
-  // If a test is selected, show the detail view
-  if (selectedTest) {
-    return (
-      <TestDetailView
-        testId={selectedTest.id}
-        testName={selectedTest.name}
-        onBack={() => setSelectedTest(null)}
-      />
-    );
-  }
+  // Dynamic categories from test_library
+  const { data: libraryFamilies } = useQuery({
+    queryKey: ["library-families"],
+    queryFn: async () => {
+      const { data } = await supabase.from("test_library").select("family");
+      const set = new Set<string>();
+      data?.forEach((r: any) => r.family && set.add(r.family));
+      return Array.from(set) as TestFamily[];
+    },
+  });
 
   // Build categorized summary
-  const summaryByTest = new Map<string, TestSummary>();
-
-  if (allResults) {
+  const summaryByTest = useMemo(() => {
+    const map = new Map<string, TestSummary>();
+    if (!allResults) return map;
     const grouped = new Map<string, typeof allResults>();
     allResults.forEach(r => {
       if (!grouped.has(r.test_id)) grouped.set(r.test_id, []);
       grouped.get(r.test_id)!.push(r);
     });
-
     grouped.forEach((results, testId) => {
       const info = results[0].test_library as any;
       if (!info) return;
@@ -95,8 +96,7 @@ export default function Dashboard() {
       const trend = results.length >= 2
         ? progressionDelta(Number(results[1].value), Number(results[0].value), lowerBetter)
         : null;
-
-      summaryByTest.set(testId, {
+      map.set(testId, {
         testId,
         name: info.name,
         family: info.family,
@@ -112,14 +112,46 @@ export default function Dashboard() {
         cycleDay: (latest as any).cycle_day ?? null,
       });
     });
-  }
+    return map;
+  }, [allResults]);
 
-  const summariesByFamily: Partial<Record<TestFamily, TestSummary[]>> = {};
-  summaryByTest.forEach(s => {
-    const fam = s.family as TestFamily;
-    if (!summariesByFamily[fam]) summariesByFamily[fam] = [];
-    summariesByFamily[fam]!.push(s);
-  });
+  const summariesByFamily = useMemo(() => {
+    const out: Partial<Record<TestFamily, TestSummary[]>> = {};
+    summaryByTest.forEach(s => {
+      const fam = s.family as TestFamily;
+      if (!out[fam]) out[fam] = [];
+      out[fam]!.push(s);
+    });
+    return out;
+  }, [summaryByTest]);
+
+  // Tab list: union of library families + any with results, ordered by FAMILY_ORDER
+  const tabFamilies = useMemo(() => {
+    const set = new Set<TestFamily>();
+    (libraryFamilies || []).forEach(f => set.add(f));
+    Object.keys(summariesByFamily).forEach(f => set.add(f as TestFamily));
+    const ordered = FAMILY_ORDER.filter(f => set.has(f));
+    // append any unknown families at the end
+    set.forEach(f => { if (!ordered.includes(f)) ordered.push(f); });
+    return ordered;
+  }, [libraryFamilies, summariesByFamily]);
+
+  // Default active tab: first family with results
+  const effectiveTab: TestFamily | null = useMemo(() => {
+    if (activeTab && tabFamilies.includes(activeTab)) return activeTab;
+    const firstWithResults = tabFamilies.find(f => (summariesByFamily[f]?.length || 0) > 0);
+    return firstWithResults || tabFamilies[0] || null;
+  }, [activeTab, tabFamilies, summariesByFamily]);
+
+  if (selectedTest) {
+    return (
+      <TestDetailView
+        testId={selectedTest.id}
+        testName={selectedTest.name}
+        onBack={() => setSelectedTest(null)}
+      />
+    );
+  }
 
   // Jump ratios
   const getLatestValue = (name: string) => {
@@ -188,9 +220,101 @@ export default function Dashboard() {
     }
   };
 
+  const renderTestRow = (s: TestSummary) => {
+    const rmLabel = get1RMLabel(s);
+    const isStreet = isStreetlifting(s.family);
+    const streetRS = isStreet && profile?.weight_kg
+      ? streetliftingRelativeStrength(s.latest, Number(profile.weight_kg))
+      : null;
+    const isStrengthFamily = ['strength', 'weightlifting'].includes(s.family);
+    const strengthToWeight = isStrengthFamily && profile?.weight_kg && !isStreet
+      ? (() => {
+          const oneRM = s.latestReps && s.latestReps > 1
+            ? brzycki1RM(s.latest, s.latestReps)
+            : s.latest;
+          return relativeForce(oneRM, Number(profile.weight_kg));
+        })()
+      : null;
+
+    return (
+      <button
+        key={s.testId}
+        onClick={() => setSelectedTest({ id: s.testId, name: s.name })}
+        className="flex w-full items-center justify-between rounded-xl bg-secondary/50 px-4 py-3 text-left transition-colors hover:bg-secondary"
+      >
+        <div className="min-w-0 flex-1">
+          <p className="flex items-center gap-1.5 truncate font-medium text-foreground">
+            {s.name}
+            {strengthToWeight !== null && (
+              <Badge className="ml-1.5 bg-primary/15 text-primary border-primary/30 text-[10px] px-1.5 py-0">
+                <Dumbbell className="mr-0.5 h-2.5 w-2.5" />
+                {strengthToWeight.toFixed(1)}x BW
+              </Badge>
+            )}
+          </p>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span>{s.latestDate}</span>
+            {rmLabel && <span className="text-primary/80">• {rmLabel}</span>}
+            {isStreet && streetRS && (
+              <span className="text-primary/80">• {streetRS}x BW</span>
+            )}
+            {s.wellnessScore !== null && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="cursor-help">😴 {s.wellnessScore.toFixed(1)}</span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Wellness: {s.wellnessScore.toFixed(1)}/6</p>
+                  {s.cycleDay && (() => {
+                    const phase = cycleDayToPhase(s.cycleDay);
+                    return <p style={{ color: phase.color }}>{phase.label} — J{s.cycleDay}</p>;
+                  })()}
+                </TooltipContent>
+              </Tooltip>
+            )}
+            {!s.wellnessScore && s.cycleDay && (() => {
+              const phase = cycleDayToPhase(s.cycleDay);
+              return (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="cursor-help" style={{ color: phase.color }}>●</span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p style={{ color: phase.color }}>{phase.label} — J{s.cycleDay}</p>
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })()}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 text-right">
+          <div>
+            <p className="text-lg font-bold text-primary">
+              {s.latest} {s.unit}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              PB: {s.pb} {s.unit} {s.isPB && "🏆"}
+            </p>
+          </div>
+          <div className="flex items-center gap-1">
+            <TrendIcon trend={s.trend} />
+            {s.trend !== null && (
+              <span className={`text-sm font-bold ${s.trend > 0 ? "text-success" : s.trend < 0 ? "text-destructive" : "text-muted-foreground"}`}>
+                {s.trend > 0 ? "+" : ""}{s.trend}%
+              </span>
+            )}
+          </div>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        </div>
+      </button>
+    );
+  };
+
+  const activeFamilyResults = effectiveTab ? summariesByFamily[effectiveTab] || [] : [];
+
   return (
     <TooltipProvider>
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3">
@@ -211,8 +335,8 @@ export default function Dashboard() {
           )}
         </div>
 
-        {/* Calendar */}
-        {profileId && <DashboardCalendar profileIds={[profileId]} mode="athlete" />}
+        {/* Compact Calendar */}
+        {profileId && <CompactCalendar profileIds={[profileId]} />}
 
         {/* Jump Ratio Cards */}
         {(cmjSj !== null || cmjAbal !== null) && (
@@ -226,121 +350,67 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* Categorized Summary — clickable cards */}
-        {FAMILY_ORDER.filter(f => summariesByFamily[f]?.length).map((family, fi) => (
+        {/* Category Tabs */}
+        {tabFamilies.length > 0 && (
           <motion.div
-            key={family}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.05 * fi }}
-            className="glass-card rounded-2xl p-6"
+            className="space-y-4"
           >
-            <h2 className="mb-4 text-lg font-semibold capitalize text-foreground">
-              {FAMILY_LABELS[family]}
-            </h2>
-            {family === "weightlifting" && (
-              <div className="mb-4">
-                <MaxPredictor results={(allResults || []) as any} />
-              </div>
-            )}
-            <div className="space-y-2">
-              {summariesByFamily[family]!.map(s => {
-                const rmLabel = get1RMLabel(s);
-                const isStreet = isStreetlifting(s.family);
-                const streetRS = isStreet && profile?.weight_kg
-                  ? streetliftingRelativeStrength(s.latest, Number(profile.weight_kg))
-                  : null;
-                
-                // Strength-to-weight ratio for strength/weightlifting
-                const isStrengthFamily = ['strength', 'weightlifting'].includes(s.family);
-                const strengthToWeight = isStrengthFamily && profile?.weight_kg && !isStreet
-                  ? (() => {
-                      const oneRM = s.latestReps && s.latestReps > 1
-                        ? brzycki1RM(s.latest, s.latestReps)
-                        : s.latest;
-                      return relativeForce(oneRM, Number(profile.weight_kg));
-                    })()
-                  : null;
-
+            {/* Tab bar */}
+            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 scrollbar-thin">
+              {tabFamilies.map((fam) => {
+                const isActive = effectiveTab === fam;
+                const count = summariesByFamily[fam]?.length || 0;
                 return (
                   <button
-                    key={s.testId}
-                    onClick={() => setSelectedTest({ id: s.testId, name: s.name })}
-                    className="flex w-full items-center justify-between rounded-xl bg-secondary/50 px-4 py-3 text-left transition-colors hover:bg-secondary"
+                    key={fam}
+                    onClick={() => setActiveTab(fam)}
+                    className={`whitespace-nowrap rounded-full px-4 py-2 text-sm font-medium transition-all
+                      ${isActive
+                        ? "bg-primary text-primary-foreground shadow-[0_4px_14px_-4px_hsl(var(--primary)/0.5)]"
+                        : "bg-secondary/50 text-muted-foreground hover:bg-secondary hover:text-foreground"}
+                    `}
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-1.5 truncate font-medium text-foreground">
-                        {s.name}
-                        {strengthToWeight !== null && (
-                          <Badge className="ml-1.5 bg-primary/15 text-primary border-primary/30 text-[10px] px-1.5 py-0">
-                            <Dumbbell className="mr-0.5 h-2.5 w-2.5" />
-                            {strengthToWeight.toFixed(1)}x BW
-                          </Badge>
-                        )}
-                      </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                        <span>{s.latestDate}</span>
-                        {rmLabel && <span className="text-primary/80">• {rmLabel}</span>}
-                        {isStreet && streetRS && (
-                          <span className="text-primary/80">• {streetRS}x BW</span>
-                        )}
-                        {s.wellnessScore !== null && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <span className="cursor-help">😴 {s.wellnessScore.toFixed(1)}</span>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p>Wellness: {s.wellnessScore.toFixed(1)}/6</p>
-                              {s.cycleDay && (() => {
-                                const phase = cycleDayToPhase(s.cycleDay);
-                                return <p style={{ color: phase.color }}>{phase.label} — J{s.cycleDay}</p>;
-                              })()}
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
-                        {!s.wellnessScore && s.cycleDay && (() => {
-                          const phase = cycleDayToPhase(s.cycleDay);
-                          return (
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="cursor-help" style={{ color: phase.color }}>●</span>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                <p style={{ color: phase.color }}>{phase.label} — J{s.cycleDay}</p>
-                              </TooltipContent>
-                            </Tooltip>
-                          );
-                        })()}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3 text-right">
-                      <div>
-                        <p className="text-lg font-bold text-primary">
-                          {s.latest} {s.unit}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          PB: {s.pb} {s.unit} {s.isPB && "🏆"}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <TrendIcon trend={s.trend} />
-                        {s.trend !== null && (
-                          <span className={`text-sm font-bold ${s.trend > 0 ? "text-success" : s.trend < 0 ? "text-destructive" : "text-muted-foreground"}`}>
-                            {s.trend > 0 ? "+" : ""}{s.trend}%
-                          </span>
-                        )}
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground" />
-                    </div>
+                    {FAMILY_LABELS[fam] || fam}
+                    {count > 0 && (
+                      <span className={`ml-2 rounded-full px-1.5 py-0.5 text-[10px] font-semibold
+                        ${isActive ? "bg-primary-foreground/20" : "bg-primary/15 text-primary"}`}>
+                        {count}
+                      </span>
+                    )}
                   </button>
                 );
               })}
             </div>
-          </motion.div>
-        ))}
 
-        {/* Empty state */}
-        {summaryByTest.size === 0 && (
+            {/* Tab content */}
+            <div className="glass-card rounded-2xl p-6 space-y-3">
+              {/* Max Predictor quick access — Weightlifting only */}
+              {effectiveTab === "weightlifting" && (
+                <Button
+                  onClick={() => setMaxPredictorOpen(true)}
+                  className="w-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground hover:from-primary/90 hover:to-primary/70 shadow-[0_4px_14px_-4px_hsl(var(--primary)/0.5)]"
+                >
+                  <Zap className="mr-2 h-4 w-4" />
+                  Max Predictor
+                </Button>
+              )}
+
+              {activeFamilyResults.length > 0 ? (
+                activeFamilyResults.map(renderTestRow)
+              ) : (
+                <div className="flex flex-col items-center py-10 text-center">
+                  <Activity className="mb-3 h-10 w-10 text-muted-foreground/30" />
+                  <p className="text-sm text-muted-foreground">No results yet for this category</p>
+                </div>
+              )}
+            </div>
+          </motion.div>
+        )}
+
+        {/* Empty state — no library at all */}
+        {tabFamilies.length === 0 && summaryByTest.size === 0 && (
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -352,7 +422,19 @@ export default function Dashboard() {
             </div>
           </motion.div>
         )}
-        
+
+        {/* Max Predictor Modal */}
+        <Dialog open={maxPredictorOpen} onOpenChange={setMaxPredictorOpen}>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5 text-primary" />
+                Max Predictor
+              </DialogTitle>
+            </DialogHeader>
+            <MaxPredictor results={(allResults || []) as any} />
+          </DialogContent>
+        </Dialog>
       </div>
     </TooltipProvider>
   );
