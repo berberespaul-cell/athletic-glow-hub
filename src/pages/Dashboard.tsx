@@ -9,6 +9,7 @@ import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/comp
 import { useMemo, useState } from "react";
 import TestDetailView from "@/components/TestDetailView";
 import CompactCalendar from "@/components/CompactCalendar";
+import GoalsBlock from "@/components/GoalsBlock";
 import MaxPredictor from "@/components/MaxPredictor";
 import JumpRatioCard from "@/components/JumpRatioCard";
 import { SportBadge } from "@/components/SportBadge";
