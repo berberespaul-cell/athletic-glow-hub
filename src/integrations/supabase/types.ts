@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      athlete_goals: {
+        Row: {
+          achieved: boolean
+          achieved_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          profile_id: string
+          target_date: string
+          target_value: number
+          test_id: string
+          updated_at: string
+        }
+        Insert: {
+          achieved?: boolean
+          achieved_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          profile_id: string
+          target_date: string
+          target_value: number
+          test_id: string
+          updated_at?: string
+        }
+        Update: {
+          achieved?: boolean
+          achieved_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          profile_id?: string
+          target_date?: string
+          target_value?: number
+          test_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       benchmarks: {
         Row: {
           created_at: string | null
