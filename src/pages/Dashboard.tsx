@@ -350,6 +350,9 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* Personal Goals — athletes only */}
+        {role !== "coach" && profileId && <GoalsBlock profileId={profileId} />}
+
         {/* Category Tabs */}
         {tabFamilies.length > 0 && (
           <motion.div
